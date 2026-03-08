@@ -407,16 +407,16 @@ td input:focus{border-color:var(--accent);background:rgba(0,229,160,0.04);}
       <table>
         <thead><tr>
           <th>Product</th>
-          <th>Ratio N</th><th>Action N</th>
-          <th>Ratio S</th><th>Action S</th>
-          <th>Ratio W</th><th>Action W</th>
+          <th>Ratio N (Inv/CD)</th><th>Action N</th>
+          <th>Ratio S (Inv/CD)</th><th>Action S</th>
+          <th>Ratio W (Inv/CD)</th><th>Action W</th>
           <th>Sell-Through</th>
         </tr></thead>
         <tbody id="regional-action-body"></tbody>
       </table>
       </div>
       <div class="advice" style="margin-top:10px;font-size:10px;">
-        <strong>Inv/Sales thresholds:</strong> &gt;2.5 = STOP &nbsp;·&nbsp; 1.5–2.5 = REDUCE &nbsp;·&nbsp; 0.8–1.5 = SHIP &nbsp;·&nbsp; &lt;0.8 = REFILL<br/>
+        <strong>Inv/CycleDemand thresholds:</strong> &gt;2.5 = STOP &nbsp;·&nbsp; 1.5–2.5 = REDUCE &nbsp;·&nbsp; 0.8–1.5 = SHIP &nbsp;·&nbsp; &lt;0.8 = REFILL<br/>
         <strong>Sell-Through:</strong> &gt;0.85 = Stockout risk &nbsp;·&nbsp; 0.65–0.85 = Healthy &nbsp;·&nbsp; 0.5–0.65 = Monitor &nbsp;·&nbsp; &lt;0.5 = Overstock
       </div>
     </div>
@@ -449,13 +449,13 @@ td input:focus{border-color:var(--accent);background:rgba(0,229,160,0.04);}
       <div class="panel-title"><span class="dot" style="background:var(--warn)"></span>Network-Aware Procurement (accounts for existing stock)</div>
       <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Product</th><th>Total Forecast</th><th>Target Network Stock (×1.3)</th><th>Hub + Regional Inv</th><th>Procure Qty</th><th>Status</th></tr></thead>
+        <thead><tr><th>Product</th><th>Total Cycle Demand</th><th>Target Network Stock (×1.3)</th><th>Hub + Regional Inv</th><th>Procure Qty</th><th>Status</th></tr></thead>
         <tbody id="proc-body"></tbody>
       </table>
       </div>
       <div class="advice advice-warn" style="margin-top:10px;font-size:10px;">
-        <b>Formula:</b> Procure = max(0, Total Forecast × 1.3 − (Hub Inv + Total Regional Inv))<br/>
-        This prevents ordering what you already have.
+        <b>Formula:</b> Procure = max(0, totalCycleDemand × 1.3 − (Hub Inv + Total Regional Inv))<br/>
+        Cycle Demand = (forecast / windowDays) × scheduleDays &nbsp;·&nbsp; Scales correctly when planning horizon changes.
       </div>
     </div>
     <div class="panel">
@@ -523,9 +523,9 @@ td input:focus{border-color:var(--accent);background:rgba(0,229,160,0.04);}
       <div class="panel-title"><span class="dot" style="background:var(--bad)"></span>Formula Reference</div>
       <div class="fcard"><span class="fl">Demand Forecast</span><br/><span style="color:var(--text)">= 0.7 × current sales + 0.3 × previous sales</span><br/><span class="fn">If no previous data: forecast = current sales</span></div>
       <div class="fcard"><span class="fl">Daily Demand</span><br/><span style="color:var(--text)">= forecast / salesWindowDays</span><br/><span class="fn">Cycle Demand = dailyDemand × scheduleDays</span></div>
-      <div class="fcard"><span class="fl">Shipment [Push]</span><br/><span style="color:var(--text)">= max(0, forecast × 1.2 − current WH inventory)</span><br/><span class="fn">If region action = STOP → shipment = 0</span></div>
-      <div class="fcard"><span class="fl">Shipment [Pull]</span><br/><span style="color:var(--text)">= max(0, reorderPoint − current WH inventory)</span><br/><span class="fn">Reorder point = expected demand per cycle</span></div>
-      <div class="fcard"><span class="fl">Procurement</span><br/><span style="color:var(--text)">= max(0, totalForecast × 1.3 − availableStock)</span><br/><span class="fn">availableStock = hub + all regional inventory</span></div>
+      <div class="fcard"><span class="fl">Shipment [Push]</span><br/><span style="color:var(--text)">= max(0, cycleDemand × 1.2 − current WH inventory)</span><br/><span class="fn">cycleDemand = (forecast / windowDays) × scheduleDays &nbsp;·&nbsp; STOP → 0</span></div>
+      <div class="fcard"><span class="fl">Shipment [Pull]</span><br/><span style="color:var(--text)">= max(0, cycleDemand − current WH inventory)</span><br/><span class="fn">Reorder point = cycleDemand (one full scheduling cycle)</span></div>
+      <div class="fcard"><span class="fl">Procurement</span><br/><span style="color:var(--text)">= max(0, totalCycleDemand × 1.3 − availableStock)</span><br/><span class="fn">totalCycleDemand = sum of cycleDemand across all regions</span></div>
       <div class="fcard"><span class="fl">Sell-Through</span><br/><span style="color:var(--text)">= sales / inventory &nbsp;·&nbsp; target 0.65–0.85</span></div>
       <div class="fcard"><span class="fl">Action Thresholds (Inv/Sales per region)</span><br/><span style="color:var(--text)">&gt;2.5 STOP · 1.5–2.5 REDUCE · 0.8–1.5 SHIP · &lt;0.8 REFILL</span></div>
     </div>
@@ -670,11 +670,13 @@ function cycleDemand(p, r) {
 }
 
 // Regional action flag — per product per region
+// Uses cycleDemand as denominator so ratio reflects actual cycle coverage,
+// not raw forecast window. Accurate when scheduleDays ≠ windowDays.
 function regionalAction(p, r) {
-  const s = forecast(p, r);
-  const i = inv(p, r);
-  if (s === 0) return null;
-  const ratio = i / s;
+  const cd = cycleDemand(p, r);
+  const i  = inv(p, r);
+  if (cd === 0) return null;
+  const ratio = i / cd;
   if (ratio > 2.5)  return 'STOP';
   if (ratio > 1.5)  return 'REDUCE';
   if (ratio >= 0.8) return 'SHIP';
@@ -686,17 +688,18 @@ function calcShipment(p, r) {
   const action = regionalAction(p, r);
   if (action === 'STOP') return 0;
 
-  const fc = forecast(p, r);
-  if (fc === 0) return 0;
+  const cd = cycleDemand(p, r);
+  if (cd === 0) return 0;
 
   const curInv = inv(p, r);
 
   if (state.mode === 'push') {
-    const targetStock = fc * SAFETY_FACTOR;
+    // Push: target stock = cycleDemand × safetyFactor, scaled to planning horizon
+    const targetStock = cd * SAFETY_FACTOR;
     return Math.max(0, Math.round(targetStock - curInv));
   } else {
-    // Pull: reorder to cover one cycle
-    const reorderPoint = cycleDemand(p, r);
+    // Pull: reorder to cover exactly one cycle
+    const reorderPoint = cd;
     return Math.max(0, Math.round(reorderPoint - curInv));
   }
 }
@@ -730,11 +733,11 @@ function velocity(p) {
   return ti > 0 ? tf / ti : 0;
 }
 
-// Procurement — network-aware
+// Procurement — network-aware, uses total cycle demand so it scales with scheduleDays
 function calcProcurement(p) {
-  const tf = totalForecast(p);
-  if (tf === 0) return 0;
-  const targetNetworkStock = tf * PROC_FACTOR;
+  const totalCycleDemand = REGIONS.reduce((a, r) => a + cycleDemand(p, r), 0);
+  if (totalCycleDemand === 0) return 0;
+  const targetNetworkStock = totalCycleDemand * PROC_FACTOR;
   const available = hub(p) + totalInv(p);
   return Math.max(0, Math.round(targetNetworkStock - available));
 }
@@ -982,8 +985,9 @@ function renderRegionalActions() {
     row.className = actionRowClass(p);
     let c = `<td class="pname">${p}</td>`;
     REGIONS.forEach(r => {
-      const fc = forecast(p, r); const iv = inv(p, r);
-      const ratio = fc > 0 ? (iv / fc) : null;
+      const cd = cycleDemand(p, r); const iv = inv(p, r);
+      // ratio uses cycleDemand to match regionalAction() engine
+      const ratio = cd > 0 ? (iv / cd) : null;
       const action = regionalAction(p, r);
       const ratioColor = ratio === null ? 'var(--muted)' : ratio > 2.5 ? 'var(--stop)' : ratio > 1.5 ? 'var(--warn)' : ratio >= 0.8 ? 'var(--good)' : 'var(--refill)';
       c += `<td style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:${ratioColor}">${ratio !== null ? ratio.toFixed(2) : '—'}</td>`;
@@ -1005,8 +1009,8 @@ function renderShipments() {
     const m = state.mode;
     note.innerHTML = `<strong>Mode: ${m.toUpperCase()}</strong> &nbsp;·&nbsp; ` +
       (m === 'push'
-        ? `Push formula: Shipment = max(0, forecast × ${SAFETY_FACTOR} − current inv) &nbsp;·&nbsp; Region STOP → 0 always`
-        : `Pull formula: Shipment = max(0, cycleDemand − current inv) &nbsp;·&nbsp; cycleDemand = dailyDemand × ${state.scheduleDays} days`);
+        ? `Push: Shipment = max(0, cycleDemand × ${SAFETY_FACTOR} − current inv) &nbsp;·&nbsp; cycleDemand = (forecast / ${state.windowDays}d) × ${state.scheduleDays}d &nbsp;·&nbsp; STOP → 0`
+        : `Pull: Shipment = max(0, cycleDemand − current inv) &nbsp;·&nbsp; cycleDemand = (forecast / ${state.windowDays}d) × ${state.scheduleDays}d`);
   }
 
   PRODUCTS.forEach(p => {
@@ -1031,25 +1035,25 @@ function renderShipments() {
 function renderProcurement() {
   const tb = document.getElementById('proc-body'); if (!tb) return; tb.innerHTML = '';
   PRODUCTS.forEach(p => {
-    const tf = totalForecast(p);
-    const ti = totalInv(p);
-    const h  = hub(p);
-    const tns = Math.round(tf * PROC_FACTOR);
-    const avail = h + ti;
+    const tcd    = REGIONS.reduce((a, r) => a + cycleDemand(p, r), 0); // total cycle demand
+    const ti     = totalInv(p);
+    const h      = hub(p);
+    const tns    = Math.round(tcd * PROC_FACTOR);
+    const avail  = h + ti;
     const procure = calcProcurement(p);
     let st;
-    if (tf === 0) st = '—';
+    if (tcd === 0) st = '—';
     else if (procure === 0) st = mkBadge('Stocked','bg-good');
     else if (avail === 0)   st = mkBadge('EMPTY—Order','bg-stop');
-    else if (procure < tf)  st = mkBadge('Top-up','bg-warn');
+    else if (procure < tcd) st = mkBadge('Top-up','bg-warn');
     else                    st = mkBadge('Order Now','bg-bad');
     const row = document.createElement('tr');
     row.innerHTML = `<td class="pname">${p}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:11px">${tf > 0 ? tf.toFixed(0) : '—'}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">${tf > 0 ? tns : '—'}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:11px">${tcd > 0 ? tcd.toFixed(0) : '—'}</td>
+      <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">${tcd > 0 ? tns : '—'}</td>
       <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--blue)">${avail > 0 ? avail : '—'}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--warn)">${tf > 0 ? procure : '—'}</td>
-      <td>${tf > 0 ? st : '—'}</td>`;
+      <td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--warn)">${tcd > 0 ? procure : '—'}</td>
+      <td>${tcd > 0 ? st : '—'}</td>`;
     tb.appendChild(row);
   });
 }
@@ -1153,22 +1157,22 @@ function renderValuation() {
 }
 
 function renderSummary() {
-  // Collect per-product signals
-  const stop = [], reduce = [], normal = [], refill = [];
+  // Collect per-region signals: store {product, region, action} tuples
+  const stopItems = [], reduceItems = [], normalItems = [], refillItems = [];
   const procMore = [], priceRaise = [], priceDecrease = [], priceAvoid = [];
 
   PRODUCTS.forEach(p => {
     if (totalForecast(p) === 0) return;
-    const actions = REGIONS.map(r => regionalAction(p, r)).filter(Boolean);
-    const hasStop   = actions.includes('STOP');
-    const hasReduce = actions.includes('REDUCE');
-    const hasRefill = actions.includes('REFILL');
-    const allNormal = actions.every(a => a === 'SHIP');
 
-    if (hasStop)        stop.push(p);
-    else if (hasReduce) reduce.push(p);
-    else if (hasRefill) refill.push(p);
-    else if (allNormal) normal.push(p);
+    REGIONS.forEach(r => {
+      const action = regionalAction(p, r);
+      if (!action) return;
+      const label = `${p} (${r})`;
+      if (action === 'STOP')   stopItems.push(label);
+      if (action === 'REDUCE') reduceItems.push(label);
+      if (action === 'SHIP')   normalItems.push(label);
+      if (action === 'REFILL') refillItems.push(label);
+    });
 
     if (calcProcurement(p) > 0) procMore.push(p);
 
@@ -1181,20 +1185,27 @@ function renderSummary() {
 
   const hubStatus = hubAnalysis().status;
 
-  const fmt = (arr, color) => arr.length
+  const fmtItems = (arr, color) => arr.length
+    ? arr.map(label => `<span style="color:${color};font-weight:700">${label}</span>`).join('<br/>')
+    : '<span style="color:var(--muted);font-style:italic">None</span>';
+
+  const fmtProds = (arr, color) => arr.length
     ? arr.map(p => `<span style="color:${color};font-weight:700">${p}</span>`).join(' · ')
     : '<span style="color:var(--muted);font-style:italic">None</span>';
 
   const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
 
-  const stopAll = [...new Set([...stop, ...reduce])];
-  set('sum-stop',     stopAll.length ? fmt(stop,'var(--stop)') + (reduce.length ? '<br/>' + fmt(reduce,'var(--warn)') : '') : '<span style="color:var(--good)">All clear ✓</span>');
-  set('sum-normal',   fmt(normal,  'var(--good)'));
-  set('sum-refill',   fmt(refill,  'var(--refill)'));
-  set('sum-procure',  procMore.length ? fmt(procMore,'var(--warn)') : '<span style="color:var(--good)">Stocked ✓</span>');
-  set('sum-raise',    fmt(priceRaise,  'var(--purple)'));
-  set('sum-decrease', fmt(priceDecrease,'var(--bad)'));
-  set('sum-avoid',    fmt([...new Set(priceAvoid)], 'var(--bad)'));
+  const stopHtml = stopItems.length
+    ? fmtItems(stopItems, 'var(--stop)') + (reduceItems.length ? '<br/>' + fmtItems(reduceItems, 'var(--warn)') : '')
+    : (reduceItems.length ? fmtItems(reduceItems, 'var(--warn)') : '<span style="color:var(--good)">All clear ✓</span>');
+
+  set('sum-stop',     stopHtml);
+  set('sum-normal',   fmtItems(normalItems, 'var(--good)'));
+  set('sum-refill',   fmtItems(refillItems, 'var(--refill)'));
+  set('sum-procure',  procMore.length ? fmtProds(procMore,'var(--warn)') : '<span style="color:var(--good)">Stocked ✓</span>');
+  set('sum-raise',    fmtProds(priceRaise,  'var(--purple)'));
+  set('sum-decrease', fmtProds(priceDecrease,'var(--bad)'));
+  set('sum-avoid',    fmtProds([...new Set(priceAvoid)], 'var(--bad)'));
 
   const hubMap = { HEALTHY: ['var(--good)','✓ Healthy'], 'AT RISK': ['var(--warn)','⚠ At Risk'], EMPTY: ['var(--stop)','🚨 EMPTY'] };
   const [hc, ht] = hubMap[hubStatus] || ['var(--muted)', hubStatus];
@@ -1280,15 +1291,38 @@ function buildChecklist() {
 function confirmReset() {
   if (!confirm('Reset all data for this round? Saved localStorage data will also be cleared.')) return;
   localStorage.removeItem('erp_war_room_v3');
+
+  // Fully reset state object first
+  state = {
+    mode: 'push',
+    scheduleDays: 3,
+    windowDays: 3,
+    round: null,
+    products: {}
+  };
+  initState();
+
+  // Reset header controls to defaults
+  const pm = document.getElementById('planning-mode'); if (pm) pm.value = 'push';
+  const sd = document.getElementById('sched-days');   if (sd) sd.value = 3;
+  const wd = document.getElementById('window-days');  if (wd) wd.value = 3;
+  const ri = document.getElementById('round-input');  if (ri) ri.value = '';
+
+  // Reset all number inputs except the header controls already reset above
   document.querySelectorAll('input[type="number"]').forEach(el => {
-    if (el.id === 'sched-days' || el.id === 'window-days') return;
-    if (el.id.startsWith('price_')) { el.value = DEF_PRICES[PRODUCTS.find(p => K(p) === el.id.replace('price_',''))] || ''; return; }
+    if (['sched-days','window-days'].includes(el.id)) return;
+    if (el.id.startsWith('price_')) {
+      const p = PRODUCTS.find(p => K(p) === el.id.replace('price_',''));
+      el.value = p ? DEF_PRICES[p] : '';
+      return;
+    }
     el.value = '';
   });
+
   document.querySelectorAll('.chk').forEach(c => c.classList.remove('done'));
-  document.getElementById('notes-main').value = '';
-  document.getElementById('notes-next').value = '';
-  initState();
+  const nm = document.getElementById('notes-main'); if (nm) nm.value = '';
+  const nn = document.getElementById('notes-next'); if (nn) nn.value = '';
+
   recalcAll();
 }
 
