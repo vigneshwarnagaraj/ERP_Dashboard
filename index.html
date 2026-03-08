@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ERP War Room — Logistics Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2330;
+    --accent: #00e5a0;
+    --accent2: #ff4d6d;
+    --accent3: #f5a623;
+    --text: #e8eaf0;
+    --muted: #5a6070;
+    --good: #00e5a0;
+    --warn: #f5a623;
+    --bad: #ff4d6d;
+    --grid: rgba(0,229,160,0.04);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 39px,var(--grid) 39px,var(--grid) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,var(--grid) 39px,var(--grid) 40px);pointer-events:none;z-index:0;}
+
+  /* HEADER */
+  header{position:relative;z-index:10;padding:18px 32px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(10,12,16,0.95);backdrop-filter:blur(10px);}
+  .logo{display:flex;align-items:center;gap:12px;}
+  .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .logo-text{font-size:13px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);}
+  .round-badge{font-family:'Space Mono',monospace;font-size:12px;color:var(--muted);border:1px solid var(--border);padding:6px 14px;border-radius:4px;}
+  .round-badge span{color:var(--accent3);font-weight:700;}
+
+  /* MAIN LAYOUT */
+  main{position:relative;z-index:1;padding:24px 32px;display:flex;flex-direction:column;gap:20px;}
+
+  /* VALUATION TRACKER */
+  .val-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .val-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;position:relative;overflow:hidden;}
+  .val-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+  .val-card.green::after{background:var(--good);}
+  .val-card.yellow::after{background:var(--warn);}
+  .val-card.red::after{background:var(--bad);}
+  .val-card.blue::after{background:#4da6ff;}
+  .val-label{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  .val-value{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:var(--text);}
+  .val-value input{background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--accent3);font-family:'Space Mono',monospace;font-size:22px;font-weight:700;width:140px;outline:none;padding:2px 0;}
+  .val-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+  /* SECTION TITLES */
+  .section-title{font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+  .section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  /* TABS */
+  .tabs{display:flex;gap:4px;margin-bottom:16px;}
+  .tab{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;padding:8px 16px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .2s;}
+  .tab.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
+  .tab:hover:not(.active){border-color:var(--accent);color:var(--accent);}
+
+  /* DATA GRID */
+  .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;}
+  .panel-title{font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  .panel-title .dot{width:6px;height:6px;border-radius:50%;}
+
+  /* TABLE */
+  table{width:100%;border-collapse:collapse;}
+  th{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);}
+  td{padding:7px 8px;border-bottom:1px solid rgba(30,35,48,0.5);font-family:'Space Mono',monospace;font-size:12px;}
+  td input{background:transparent;border:1px solid transparent;color:var(--accent3);font-family:'Space Mono',monospace;font-size:12px;width:70px;outline:none;padding:3px 6px;border-radius:3px;text-align:center;transition:border .2s;}
+  td input:focus{border-color:var(--accent);background:rgba(0,229,160,0.05);}
+  tr:last-child td{border-bottom:none;}
+  .product-name{font-weight:600;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;letter-spacing:0.04em;}
+
+  /* STATUS BADGE */
+  .badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;font-weight:700;}
+  .badge-good{background:rgba(0,229,160,0.12);color:var(--good);border:1px solid rgba(0,229,160,0.3);}
+  .badge-warn{background:rgba(245,166,35,0.12);color:var(--warn);border:1px solid rgba(245,166,35,0.3);}
+  .badge-bad{background:rgba(255,77,109,0.12);color:var(--bad);border:1px solid rgba(255,77,109,0.3);}
+
+  /* DASHBOARD CALC PANEL */
+  .calc-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px;}
+  .calc-table th{background:rgba(0,229,160,0.04);}
+  .metric-val{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;}
+  .metric-good{color:var(--good);}
+  .metric-warn{color:var(--warn);}
+  .metric-bad{color:var(--bad);}
+
+  /* CHECKLIST */
+  .checklist{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .check-item{display:flex;align-items:flex-start;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;cursor:pointer;transition:border-color .2s;}
+  .check-item:hover{border-color:var(--accent);}
+  .check-item.done{border-color:rgba(0,229,160,0.3);background:rgba(0,229,160,0.04);}
+  .check-box{width:18px;height:18px;border:1.5px solid var(--muted);border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;margin-top:1px;}
+  .check-item.done .check-box{background:var(--accent);border-color:var(--accent);}
+  .check-box svg{display:none;}
+  .check-item.done .check-box svg{display:block;}
+  .check-text{font-size:12px;line-height:1.5;color:var(--text);}
+  .check-item.done .check-text{color:var(--muted);text-decoration:line-through;}
+
+  /* PRICE TABLE */
+  .price-table td input{width:90px;}
+
+  /* ADVICE BOX */
+  .advice{background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.2);border-radius:8px;padding:16px 20px;font-size:12px;line-height:1.7;color:var(--text);}
+  .advice strong{color:var(--accent);}
+
+  /* FOOTER */
+  footer{position:relative;z-index:1;padding:16px 32px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .footer-tip{font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;}
+  .btn{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;padding:9px 20px;border-radius:4px;cursor:pointer;border:1px solid var(--accent);background:transparent;color:var(--accent);transition:all .2s;text-transform:uppercase;}
+  .btn:hover{background:var(--accent);color:#000;}
+  .btn-primary{background:var(--accent);color:#000;border-color:var(--accent);}
+  .btn-primary:hover{background:#00c488;border-color:#00c488;}
+
+  /* NOTES */
+  .notes-area{width:100%;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;padding:12px;resize:vertical;min-height:90px;outline:none;line-height:1.6;transition:border .2s;}
+  .notes-area:focus{border-color:var(--accent);}
+  .notes-area::placeholder{color:var(--muted);}
+
+  /* VELOCITY BAR */
+  .vel-bar-wrap{display:flex;align-items:center;gap:8px;}
+  .vel-bar{height:6px;border-radius:3px;background:var(--border);flex:1;overflow:hidden;}
+  .vel-bar-inner{height:100%;border-radius:3px;transition:width .5s;}
+  .vel-pct{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted);min-width:32px;text-align:right;}
+
+  /* HIDDEN TAB PANELS */
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+  @media(max-width:900px){
+    .val-row{grid-template-columns:1fr 1fr;}
+    .data-grid{grid-template-columns:1fr;}
+    .checklist{grid-template-columns:1fr 1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <div class="logo-text">ERP War Room</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="round-badge">Round <span id="round-num">—</span> <input id="round-input" type="number" min="1" max="10" placeholder="?" style="width:36px;background:transparent;border:none;border-bottom:1px dashed #2a3040;color:#f5a623;font-family:'Space Mono',monospace;font-size:12px;outline:none;text-align:center;margin-left:4px;" oninput="document.getElementById('round-num').textContent=this.value||'—'"/></div>
+    <button class="btn" onclick="clearAll()">Reset Round</button>
+    <button class="btn btn-primary" onclick="recalcAll()">⟳ Recalculate</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- VALUATION ROW -->
+  <div>
+    <div class="section-title">Company Valuation Tracker</div>
+    <div class="val-row">
+      <div class="val-card green">
+        <div class="val-label">Round 1 Valuation</div>
+        <div class="val-value"><input id="val1" type="number" placeholder="432000" oninput="recalcAll()"/></div>
+        <div class="val-sub">Enter from ERP report</div>
+      </div>
+      <div class="val-card yellow">
+        <div class="val-label">Round 2 Valuation</div>
+        <div class="val-value"><input id="val2" type="number" placeholder="751000" oninput="recalcAll()"/></div>
+        <div class="val-sub">Enter from ERP report</div>
+      </div>
+      <div class="val-card blue">
+        <div class="val-label">Current Valuation</div>
+        <div class="val-value"><input id="valcur" type="number" placeholder="Current" oninput="recalcAll()"/></div>
+        <div class="val-sub">This round</div>
+      </div>
+      <div class="val-card" id="val-trend-card" style="border-top-color:#4da6ff;">
+        <div class="val-label">Trend</div>
+        <div class="val-value" id="val-trend" style="font-size:16px;color:var(--muted);">— Enter values</div>
+        <div class="val-sub" id="val-trend-sub">Fill in valuations above</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('sales',this)">① Sales Input</button>
+    <button class="tab" onclick="switchTab('inventory',this)">② Inventory Input</button>
+    <button class="tab" onclick="switchTab('dashboard',this)">③ Dashboard & Shipments</button>
+    <button class="tab" onclick="switchTab('prices',this)">④ Pricing</button>
+    <button class="tab" onclick="switchTab('checklist',this)">⑤ Round Checklist</button>
+    <button class="tab" onclick="switchTab('notes',this)">⑥ Notes</button>
+  </div>
+
+  <!-- TAB: SALES -->
+  <div class="tab-panel active" id="tab-sales">
+    <div class="data-grid">
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:var(--accent)"></span>Regional Sales This Round</div>
+        <table>
+          <thead><tr><th>Product</th><th>North</th><th>South</th><th>West</th><th>Total</th></tr></thead>
+          <tbody id="sales-body"></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:var(--accent3)"></span>Regional Demand Share (%)</div>
+        <table>
+          <thead><tr><th>Product</th><th>North %</th><th>South %</th><th>West %</th><th>Fastest Region</th></tr></thead>
+          <tbody id="demand-share-body"></tbody>
+        </table>
+        <div style="margin-top:16px;">
+          <div class="section-title" style="font-size:10px;margin-bottom:10px;">Product Velocity Ranking</div>
+          <div id="velocity-rank"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: INVENTORY -->
+  <div class="tab-panel" id="tab-inventory">
+    <div class="data-grid">
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:#4da6ff"></span>Current Warehouse Inventory</div>
+        <table>
+          <thead><tr><th>Product</th><th>North WH</th><th>South WH</th><th>West WH</th><th>Total</th></tr></thead>
+          <tbody id="inv-body"></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:var(--bad)"></span>Overstock Warning (Inventory ÷ Sales)</div>
+        <table>
+          <thead><tr><th>Product</th><th>Inv/Sales Ratio</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="overstock-body"></tbody>
+        </table>
+        <div class="advice" style="margin-top:16px;">
+          <strong>Rule:</strong> Ratio &lt; 1.5 = ideal · 1.5–2.0 = caution · &gt; 2.0 = reduce shipments · &lt; 0.8 = reorder fast
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: DASHBOARD -->
+  <div class="tab-panel" id="tab-dashboard">
+    <div class="calc-panel">
+      <div class="panel-title"><span class="dot" style="background:var(--accent)"></span>Recommended Shipments (Sales × 1.2 safety buffer)</div>
+      <table class="calc-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Total Sales</th>
+            <th>Total Inventory</th>
+            <th>Sell-Through</th>
+            <th>Status</th>
+            <th>→ North Ship</th>
+            <th>→ South Ship</th>
+            <th>→ West Ship</th>
+            <th>Max WH Stock (3× sales)</th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-body"></tbody>
+      </table>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;">
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:var(--warn)"></span>Procurement Quantities (Sales × 1.3)</div>
+        <table>
+          <thead><tr><th>Product</th><th>Total Expected Sales</th><th>Procure Qty</th></tr></thead>
+          <tbody id="proc-body"></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:var(--bad)"></span>Inventory Turnover (Sales ÷ Inventory)</div>
+        <table>
+          <thead><tr><th>Product</th><th>Turnover</th><th>Status</th></tr></thead>
+          <tbody id="turnover-body"></tbody>
+        </table>
+        <div class="advice" style="margin-top:16px;">
+          <strong>Target:</strong> 5–8 turns · Below 5 = overstock · Above 8 = risk of stockout
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: PRICING -->
+  <div class="tab-panel" id="tab-prices">
+    <div class="data-grid">
+      <div class="panel price-table">
+        <div class="panel-title"><span class="dot" style="background:var(--accent3)"></span>Current Prices — Adjust Carefully</div>
+        <table>
+          <thead><tr><th>Product</th><th>Current Price</th><th>Suggested Price</th><th>Change</th><th>Advice</th></tr></thead>
+          <tbody id="price-body"></tbody>
+        </table>
+        <div class="advice" style="margin-top:16px;">
+          <strong>Rule:</strong> Fast-selling product → raise price slightly · Slow/overstocked → lower price slightly. Max ±5 per round.
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:#b388ff)"></span>Price Strategy Notes</div>
+        <div class="advice">
+          <strong>Your current prices:</strong><br/>
+          Milk: 40 · Cream: 70 · Yoghurt: 28.43<br/>
+          Cheese: 90 · Butter: 65.87 · Ice Cream: 42<br/><br/>
+          <strong>Watch out:</strong> Cheese at 90 is expensive. If cheese sales slow, dead inventory will hurt valuation fast.<br/><br/>
+          <strong>Suggested:</strong> Cheese → 85 · Yoghurt → 30 to smooth demand across products.
+        </div>
+        <div style="margin-top:16px;">
+          <div class="section-title" style="font-size:10px;margin-bottom:10px;">5 Quick Decision Questions</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
+            <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);">① Which product sells <strong style="color:var(--accent)">fastest</strong>? → raise price slightly</div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);">② Which warehouse is <strong style="color:var(--bad)">overstocked</strong>? → cut shipments</div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);">③ Which region has <strong style="color:var(--warn)">stockouts</strong>? → increase shipments</div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);">④ Which product inventory &gt; <strong style="color:var(--bad)">3× sales</strong>? → stop shipping</div>
+            <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);">⑤ Is valuation <strong style="color:var(--accent)">trending up or down</strong>? → act accordingly</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: CHECKLIST -->
+  <div class="tab-panel" id="tab-checklist">
+    <div style="margin-bottom:16px;">
+      <div class="section-title">Pre-Round Actions</div>
+    </div>
+    <div class="checklist" id="checklist-grid"></div>
+  </div>
+
+  <!-- TAB: NOTES -->
+  <div class="tab-panel" id="tab-notes">
+    <div class="data-grid">
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:var(--accent)"></span>Round Notes</div>
+        <textarea class="notes-area" id="notes-main" placeholder="Note key observations this round: which products moved fast, any surprises, team decisions..."></textarea>
+        <div style="margin-top:12px;">
+          <div class="panel-title"><span class="dot" style="background:var(--warn)"></span>Next Round Plan</div>
+          <textarea class="notes-area" id="notes-next" placeholder="What will you do differently next round? Transfer changes, procurement shifts, price adjustments..."></textarea>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title"><span class="dot" style="background:var(--bad)"></span>Key Formulas Reference</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-family:'Space Mono',monospace;font-size:11px;">
+          <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);line-height:1.8;">
+            <span style="color:var(--accent)">Sell-Through</span> = Sales ÷ Inventory<br/>
+            Target: <span style="color:var(--good)">0.65–0.85</span>
+          </div>
+          <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);line-height:1.8;">
+            <span style="color:var(--accent)">Shipment</span> = Expected Sales × 1.2<br/>
+            (20% safety buffer)
+          </div>
+          <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);line-height:1.8;">
+            <span style="color:var(--accent)">Procurement</span> = Total Sales × 1.3<br/>
+            (30% safety buffer)
+          </div>
+          <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);line-height:1.8;">
+            <span style="color:var(--accent)">Max WH Stock</span> = Sales × 3<br/>
+            If exceeded → stop shipping
+          </div>
+          <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);line-height:1.8;">
+            <span style="color:var(--accent)">Reorder Point</span> = Lead Time Demand + Safety Stock<br/>
+            Example: 400 + 150 = 550
+          </div>
+          <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);line-height:1.8;">
+            <span style="color:var(--accent)">Inventory Turnover</span> = Sales ÷ Inventory<br/>
+            Target: <span style="color:var(--good)">5–8 turns</span>
+          </div>
+          <div style="padding:10px 12px;background:var(--bg);border-radius:5px;border:1px solid var(--border);line-height:1.8;">
+            <span style="color:var(--accent)">Inventory Ratio</span> = Inventory ÷ Sales<br/>
+            Ideal: <span style="color:var(--good)">1.0–1.5</span> · Danger: <span style="color:var(--bad)">&gt;2.0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-tip">💡 Fill Sales → Inventory → click Recalculate to get shipment recommendations</div>
+  <div style="display:flex;gap:10px;">
+    <button class="btn" onclick="exportSummary()">Export Summary</button>
+  </div>
+</footer>
+
+<script>
+const PRODUCTS = ['Milk','Cream','Yoghurt','Cheese','Butter','Ice Cream'];
+const REGIONS  = ['North','South','West'];
+const DEFAULT_PRICES = {Milk:40,Cream:70,Yoghurt:28.43,Cheese:90,Butter:65.87,'Ice Cream':42};
+const TARGET_MIX = {Milk:'25–30%',Cream:'10–15%',Yoghurt:'15–20%',Cheese:'15–20%',Butter:'10–15%','Ice Cream':'5–10%'};
+
+/* ---- BUILD TABLES ---- */
+function buildSalesTable(){
+  const tb = document.getElementById('sales-body');
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const row=document.createElement('tr');
+    let cells=`<td class="product-name">${p}</td>`;
+    REGIONS.forEach(r=>{
+      cells+=`<td><input type="number" id="s_${p}_${r}" placeholder="0" min="0" oninput="recalcAll()"/></td>`;
+    });
+    cells+=`<td class="metric-val" id="s_${p}_total" style="color:var(--accent)">—</td>`;
+    row.innerHTML=cells;
+    tb.appendChild(row);
+  });
+}
+
+function buildInvTable(){
+  const tb=document.getElementById('inv-body');
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const row=document.createElement('tr');
+    let cells=`<td class="product-name">${p}</td>`;
+    REGIONS.forEach(r=>{
+      cells+=`<td><input type="number" id="i_${p}_${r}" placeholder="0" min="0" oninput="recalcAll()"/></td>`;
+    });
+    cells+=`<td class="metric-val" id="i_${p}_total" style="color:#4da6ff">—</td>`;
+    row.innerHTML=cells;
+    tb.appendChild(row);
+  });
+}
+
+function buildPriceTable(){
+  const tb=document.getElementById('price-body');
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const row=document.createElement('tr');
+    row.innerHTML=`
+      <td class="product-name">${p}</td>
+      <td><input type="number" id="price_${p}" value="${DEFAULT_PRICES[p]}" step="0.01" oninput="recalcAll()"/></td>
+      <td class="metric-val" id="sug_${p}" style="color:var(--accent)">—</td>
+      <td class="metric-val" id="chg_${p}">—</td>
+      <td id="padv_${p}" style="font-size:11px;color:var(--muted)">Enter sales data</td>`;
+    tb.appendChild(row);
+  });
+}
+
+function buildChecklist(){
+  const items=[
+    'Record all regional sales numbers into the Sales Input tab',
+    'Enter current warehouse inventory levels',
+    'Click Recalculate to update all dashboards',
+    'Check Dashboard tab — identify overstocked warehouses',
+    'Note any warehouse where inventory > 3× sales (stop shipments)',
+    'Identify top 2 fastest-moving products (highest velocity)',
+    'Check South warehouse — reduce shipments if overstocked',
+    'Check North warehouse — add any missing product categories',
+    'Confirm West warehouse supply is balanced',
+    'Review sell-through rates — flag anything below 0.50',
+    'Adjust shipment numbers in ERP based on recommendations',
+    'Update prices for slow-moving products (reduce) or fast movers (raise)',
+    'Check procurement quantities — are they aligned with sales velocity?',
+    'Track company valuation — up or down from last round?',
+    'Write next-round plan in Notes tab before closing',
+  ];
+  const grid=document.getElementById('checklist-grid');
+  grid.innerHTML='';
+  items.forEach((txt,i)=>{
+    const d=document.createElement('div');
+    d.className='check-item';
+    d.id=`chk_${i}`;
+    d.innerHTML=`<div class="check-box"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="#000" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="check-text">${txt}</div>`;
+    d.onclick=()=>d.classList.toggle('done');
+    grid.appendChild(d);
+  });
+}
+
+/* ---- HELPERS ---- */
+function getSales(p,r){ return parseFloat(document.getElementById(`s_${p}_${r}`)?.value)||0; }
+function getInv(p,r){   return parseFloat(document.getElementById(`i_${p}_${r}`)?.value)||0; }
+function getPrice(p){   return parseFloat(document.getElementById(`price_${p}`)?.value)||DEFAULT_PRICES[p]; }
+function totalSales(p){ return REGIONS.reduce((a,r)=>a+getSales(p,r),0); }
+function totalInv(p){   return REGIONS.reduce((a,r)=>a+getInv(p,r),0); }
+
+function badge(txt,cls){ return `<span class="badge badge-${cls}">${txt}</span>`; }
+
+function statusSellThrough(v){
+  if(v===0) return ['—',''];
+  if(v>0.85) return [badge('Stockout Risk','bad'),'bad'];
+  if(v>=0.65) return [badge('Good','good'),'good'];
+  if(v>=0.50) return [badge('Caution','warn'),'warn'];
+  return [badge('Overstock','bad'),'bad'];
+}
+
+/* ---- RECALC ---- */
+function recalcAll(){
+  recalcSales();
+  recalcInventory();
+  recalcDashboard();
+  recalcDemandShare();
+  recalcVelocity();
+  recalcOverstock();
+  recalcProcurement();
+  recalcTurnover();
+  recalcPrices();
+  recalcValuation();
+}
+
+function recalcSales(){
+  PRODUCTS.forEach(p=>{
+    const tot=totalSales(p);
+    const el=document.getElementById(`s_${p}_total`);
+    if(el) el.textContent = tot>0?tot:'—';
+  });
+}
+
+function recalcInventory(){
+  PRODUCTS.forEach(p=>{
+    const tot=totalInv(p);
+    const el=document.getElementById(`i_${p}_total`);
+    if(el) el.textContent=tot>0?tot:'—';
+  });
+}
+
+function recalcDemandShare(){
+  const tb=document.getElementById('demand-share-body');
+  if(!tb)return;
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const tot=totalSales(p);
+    const row=document.createElement('tr');
+    let cells=`<td class="product-name">${p}</td>`;
+    let maxPct=0,maxR='—';
+    REGIONS.forEach(r=>{
+      const s=getSales(p,r);
+      const pct=tot>0?Math.round(s/tot*100):0;
+      if(pct>maxPct){maxPct=pct;maxR=r;}
+      cells+=`<td style="color:var(--muted);font-family:'Space Mono',monospace;font-size:12px">${tot>0?pct+'%':'—'}</td>`;
+    });
+    cells+=`<td>${tot>0?badge(maxR,'good'):'—'}</td>`;
+    row.innerHTML=cells;
+    tb.appendChild(row);
+  });
+}
+
+function recalcVelocity(){
+  const el=document.getElementById('velocity-rank');
+  if(!el)return;
+  const scored=PRODUCTS.map(p=>{
+    const s=totalSales(p);
+    const inv=totalInv(p);
+    const vel=inv>0?s/inv:0;
+    return{p,s,inv,vel};
+  }).filter(x=>x.s>0).sort((a,b)=>b.vel-a.vel);
+  
+  if(scored.length===0){el.innerHTML='<div style="color:var(--muted);font-size:12px">Enter sales data to see velocity ranking</div>';return;}
+  const maxVel=scored[0].vel||1;
+  el.innerHTML=scored.map((x,i)=>`
+    <div style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-size:12px;color:${i===0?'var(--accent)':'var(--text)'}">${i+1}. ${x.p}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">vel: ${x.inv>0?(x.vel).toFixed(2):'N/A'}</span>
+      </div>
+      <div class="vel-bar-wrap">
+        <div class="vel-bar"><div class="vel-bar-inner" style="width:${Math.round(x.vel/maxVel*100)}%;background:${i===0?'var(--accent)':i===1?'var(--accent3)':'var(--muted)'}"></div></div>
+        <span class="vel-pct">${x.s}</span>
+      </div>
+    </div>`).join('');
+}
+
+function recalcOverstock(){
+  const tb=document.getElementById('overstock-body');
+  if(!tb)return;
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const s=totalSales(p);
+    const inv=totalInv(p);
+    const ratio=s>0?(inv/s):null;
+    const row=document.createElement('tr');
+    let st,ac;
+    if(ratio===null){st=badge('No data','');ac='Enter sales';}
+    else if(ratio<0.8){st=badge('Stockout Risk','bad');ac='🔺 Increase procurement';}
+    else if(ratio<=1.5){st=badge('Ideal','good');ac='✓ Maintain current levels';}
+    else if(ratio<=2.0){st=badge('Caution','warn');ac='⚠ Slow down shipments';}
+    else{st=badge('OVERSTOCK','bad');ac='🛑 Stop/reduce shipments';}
+    row.innerHTML=`<td class="product-name">${p}</td>
+      <td class="metric-val ${ratio&&ratio<=1.5&&ratio>=0.8?'metric-good':ratio&&ratio>2?'metric-bad':'metric-warn'}">${ratio?ratio.toFixed(2):'—'}</td>
+      <td>${st||'—'}</td>
+      <td style="font-size:11px;color:var(--muted)">${ac}</td>`;
+    tb.appendChild(row);
+  });
+}
+
+function recalcDashboard(){
+  const tb=document.getElementById('dashboard-body');
+  if(!tb)return;
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const ts=totalSales(p);
+    const ti=totalInv(p);
+    const st=ti>0?ts/ti:0;
+    const [stBadge,stCls]=statusSellThrough(ti>0?st:0);
+    const maxWH=ts*3;
+    const row=document.createElement('tr');
+    row.innerHTML=`
+      <td class="product-name">${p}</td>
+      <td class="metric-val" style="color:var(--accent)">${ts||'—'}</td>
+      <td class="metric-val" style="color:#4da6ff">${ti||'—'}</td>
+      <td class="metric-val ${stCls==='good'?'metric-good':stCls==='bad'?'metric-bad':'metric-warn'}">${ti>0?st.toFixed(2):'—'}</td>
+      <td>${ti>0?stBadge:'—'}</td>
+      <td class="metric-val" style="color:var(--accent)">${ts>0?Math.round(getSales(p,'North')*1.2):'—'}</td>
+      <td class="metric-val" style="color:var(--accent)">${ts>0?Math.round(getSales(p,'South')*1.2):'—'}</td>
+      <td class="metric-val" style="color:var(--accent)">${ts>0?Math.round(getSales(p,'West')*1.2):'—'}</td>
+      <td class="metric-val" style="color:var(--muted)">${ts>0?Math.round(maxWH):'—'}</td>`;
+    tb.appendChild(row);
+  });
+}
+
+function recalcProcurement(){
+  const tb=document.getElementById('proc-body');
+  if(!tb)return;
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const ts=totalSales(p);
+    const row=document.createElement('tr');
+    row.innerHTML=`<td class="product-name">${p}</td>
+      <td class="metric-val" style="color:var(--text)">${ts||'—'}</td>
+      <td class="metric-val" style="color:var(--warn)">${ts>0?Math.round(ts*1.3):'—'}</td>`;
+    tb.appendChild(row);
+  });
+}
+
+function recalcTurnover(){
+  const tb=document.getElementById('turnover-body');
+  if(!tb)return;
+  tb.innerHTML='';
+  PRODUCTS.forEach(p=>{
+    const ts=totalSales(p);
+    const ti=totalInv(p);
+    const turn=ti>0?(ts/ti):null;
+    const row=document.createElement('tr');
+    let st;
+    if(turn===null) st=badge('No data','');
+    else if(turn>=5&&turn<=8) st=badge('Ideal','good');
+    else if(turn>8) st=badge('Stockout Risk','bad');
+    else st=badge('Overstock','warn');
+    row.innerHTML=`<td class="product-name">${p}</td>
+      <td class="metric-val ${turn&&turn>=5&&turn<=8?'metric-good':turn&&turn>8?'metric-bad':'metric-warn'}">${turn?turn.toFixed(2):'—'}</td>
+      <td>${st||'—'}</td>`;
+    tb.appendChild(row);
+  });
+}
+
+function recalcPrices(){
+  const tb=document.getElementById('price-body');
+  if(!tb)return;
+  PRODUCTS.forEach(p=>{
+    const ts=totalSales(p);
+    const ti=totalInv(p);
+    const cur=getPrice(p);
+    const vel=ti>0?ts/ti:0;
+    let sug=cur,adv='Insufficient data';
+    if(ts>0&&ti>0){
+      if(vel>0.7){sug=+(cur*1.05).toFixed(2);adv='🔺 Fast mover — raise price slightly';}
+      else if(vel<0.4){sug=+(cur*0.95).toFixed(2);adv='🔻 Slow mover — reduce price slightly';}
+      else{sug=cur;adv='✓ Price is balanced';}
+    }
+    const chgVal=+(sug-cur).toFixed(2);
+    const chgColor=chgVal>0?'var(--good)':chgVal<0?'var(--bad)':'var(--muted)';
+    const sugEl=document.getElementById(`sug_${p}`);
+    const chgEl=document.getElementById(`chg_${p}`);
+    const advEl=document.getElementById(`padv_${p}`);
+    if(sugEl) sugEl.textContent=ts>0?sug:'—';
+    if(chgEl){chgEl.textContent=ts>0?(chgVal>=0?'+':'')+chgVal:'—';chgEl.style.color=chgColor;}
+    if(advEl) advEl.textContent=adv;
+  });
+}
+
+function recalcValuation(){
+  const v1=parseFloat(document.getElementById('val1')?.value)||0;
+  const v2=parseFloat(document.getElementById('val2')?.value)||0;
+  const vc=parseFloat(document.getElementById('valcur')?.value)||0;
+  const trendEl=document.getElementById('val-trend');
+  const subEl=document.getElementById('val-trend-sub');
+  const card=document.getElementById('val-trend-card');
+  
+  const base=v2||v1;
+  if(vc>0&&base>0){
+    const diff=vc-base;
+    const pct=(diff/base*100).toFixed(1);
+    trendEl.textContent=(diff>=0?'▲ +':'▼ ')+Math.abs(diff).toLocaleString()+' ('+pct+'%)';
+    trendEl.style.color=diff>=0?'var(--good)':'var(--bad)';
+    subEl.textContent=diff>=0?'Growing — stay the course':'Dropping — check inventory costs';
+    card.style.setProperty('--top-color',diff>=0?'var(--good)':'var(--bad)');
+    card.style.borderTopColor=diff>=0?'var(--good)':'var(--bad)';
+  } else if(v1>0||v2>0){
+    trendEl.textContent='Tracking...';
+    trendEl.style.color='var(--muted)';
+    subEl.textContent='Enter current valuation';
+  }
+}
+
+/* ---- TAB SWITCH ---- */
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ---- CLEAR ---- */
+function clearAll(){
+  document.querySelectorAll('input[type="number"]:not(#round-input)').forEach(i=>{
+    if(!i.id.startsWith('price_')) i.value='';
+  });
+  document.querySelectorAll('.check-item').forEach(i=>i.classList.remove('done'));
+  recalcAll();
+}
+
+/* ---- EXPORT ---- */
+function exportSummary(){
+  let txt='ERP WAR ROOM — ROUND SUMMARY\n';
+  txt+='==============================\n\n';
+  txt+='SALES:\n';
+  PRODUCTS.forEach(p=>{
+    const ns=getSales(p,'North'),ss=getSales(p,'South'),ws=getSales(p,'West'),ts=ns+ss+ws;
+    if(ts>0) txt+=`  ${p}: N=${ns} S=${ss} W=${ws} Total=${ts}\n`;
+  });
+  txt+='\nRECOMMENDED SHIPMENTS (×1.2):\n';
+  PRODUCTS.forEach(p=>{
+    const ns=getSales(p,'North'),ss=getSales(p,'South'),ws=getSales(p,'West'),ts=ns+ss+ws;
+    if(ts>0) txt+=`  ${p}: N=${Math.round(ns*1.2)} S=${Math.round(ss*1.2)} W=${Math.round(ws*1.2)}\n`;
+  });
+  txt+='\nPROCUREMENT (×1.3):\n';
+  PRODUCTS.forEach(p=>{
+    const ts=totalSales(p);
+    if(ts>0) txt+=`  ${p}: ${Math.round(ts*1.3)}\n`;
+  });
+  txt+='\nNOTES:\n'+( document.getElementById('notes-main').value||'(none)')+'\n';
+  txt+='\nNEXT ROUND PLAN:\n'+(document.getElementById('notes-next').value||'(none)');
+  
+  const blob=new Blob([txt],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='erp_round_summary.txt';
+  a.click();
+}
+
+/* ---- INIT ---- */
+buildSalesTable();
+buildInvTable();
+buildPriceTable();
+buildChecklist();
+recalcAll();
+</script>
+</body>
+</html>
