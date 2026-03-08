@@ -500,8 +500,8 @@
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
       <span class="label">View</span>
       <div class="mode-toggle">
-        <button class="mode-btn active" onclick="setView('planning')">Planning</button>
-        <button class="mode-btn" onclick="setView('live')">Live</button>
+        <button class="mode-btn active" id="btn-view-planning" onclick="setView('planning', this)">Planning</button>
+        <button class="mode-btn" id="btn-view-live" onclick="setView('live', this)">Live</button>
       </div>
     </div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
@@ -520,6 +520,7 @@
       <input type="file" accept=".xlsx,.xls" onchange="uploadValuation(this)">
     </div>
     <button class="btn success" onclick="saveAll()">Save</button>
+    <span class="save-indicator" id="global-save-time" style="font-size:10px;color:var(--text3);white-space:nowrap;"></span>
     <button class="btn danger" onclick="resetAll()">Reset</button>
   </div>
 </div>
@@ -652,6 +653,7 @@
               <th>Send → 03N</th>
               <th>Send → 03S</th>
               <th>Send → 03W</th>
+              <th>Total Out</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -717,6 +719,7 @@
                 <th>→ 03N</th>
                 <th>→ 03S</th>
                 <th>→ 03W</th>
+                <th>Total Out</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -774,7 +777,10 @@ function initState() {
 function saveAll() {
   state.savedAt = new Date().toISOString();
   localStorage.setItem('erp_state', JSON.stringify(state));
-  showToast('State saved');
+  const t = timeNow();
+  const el = document.getElementById('global-save-time');
+  if (el) el.textContent = 'Saved ' + t;
+  showToast('State saved — ' + t);
 }
 
 function loadAll() {
@@ -796,17 +802,49 @@ function loadAll() {
           state.sold[p.code] = { ...state.sold[p.code], ...loaded.sold[p.code] };
         }
       });
+      // Restore saved-at display
+      if (state.savedAt) {
+        const d = new Date(state.savedAt);
+        const display = d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        const el = document.getElementById('global-save-time');
+        if (el) el.textContent = 'Saved ' + display;
+      }
     } catch(e) { console.warn('Failed to load state', e); }
   }
 }
 
 function resetAll() {
   if (!confirm('Reset all data? This cannot be undone.')) return;
+  // 1. Clear localStorage
   localStorage.removeItem('erp_state');
+  // 2. Reinitialise state
   initState();
+  // 3-5. Set defaults
   state.planMode = 'push';
   state.daysSinceRepl = 0;
   state.valuation = {};
+  state.savedAt = null;
+  // 6. Reset plan mode buttons
+  document.getElementById('btn-push').classList.add('active');
+  document.getElementById('btn-pull').classList.remove('active');
+  document.getElementById('rec-mode-label').textContent = 'PUSH';
+  document.getElementById('live-mode-label').textContent = 'PUSH';
+  document.getElementById('rec-sf').textContent = '1.2';
+  // 7. Switch to Planning view explicitly
+  setView('planning', document.getElementById('btn-view-planning'));
+  // 8. Reset days input
+  document.getElementById('days-input').value = 0;
+  // 9. Clear stale UI text
+  document.getElementById('inv-save-time').textContent = '';
+  document.getElementById('sold-save-time').textContent = '';
+  document.getElementById('val-save-info').textContent = '';
+  document.getElementById('val-display').innerHTML = '';
+  document.getElementById('val-round-select').innerHTML = '<option value="">— Select Round —</option>';
+  document.getElementById('hub-warn').style.display = 'none';
+  document.getElementById('rec-hub-warn').style.display = 'none';
+  const gst = document.getElementById('global-save-time');
+  if (gst) gst.textContent = '';
+  // 10. Re-render everything
   renderAll();
   showToast('Reset complete');
 }
@@ -816,10 +854,10 @@ function resetAll() {
 // ============================================================
 let currentView = 'planning';
 
-function setView(v) {
+function setView(v, btn) {
   currentView = v;
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  if (btn) btn.classList.add('active');
   if (v === 'planning') {
     document.getElementById('planning-view').classList.remove('hidden');
     document.getElementById('live-view').classList.remove('active');
@@ -1094,12 +1132,14 @@ function renderRecTable(tbodyId, rec) {
       return `<span class="hold-val">0</span>`;
     }
 
+    const totalOut = r.allocated['03N'] + r.allocated['03S'] + r.allocated['03W'];
     tr.innerHTML = `
       <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
       <td style="font-family:var(--mono)">${r.hubStock}</td>
       <td>${transferCell('03N')}</td>
       <td>${transferCell('03S')}</td>
       <td>${transferCell('03W')}</td>
+      <td style="font-family:var(--mono);color:${totalOut > 0 ? 'var(--orange)' : 'var(--text3)'};">${totalOut > 0 ? totalOut : '—'}</td>
       <td><span class="badge ${badgeCls}">${r.status}</span></td>
     `;
     tbody.appendChild(tr);
