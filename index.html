@@ -1,1462 +1,1403 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ERP War Room v3</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ERP Logistics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-/* ============================================================
-   DESIGN TOKENS
-   ============================================================ */
-:root{
-  --bg:#080a0e;--surface:#0f1117;--surface2:#141720;--surface3:#1a1e28;
-  --border:#1c2030;--border2:#242c3e;
-  --accent:#00e5a0;--accent-dim:rgba(0,229,160,0.12);
-  --gold:#f5a623;--blue:#4da6ff;--purple:#b388ff;
-  --text:#dde1eb;--muted:#4e5668;--muted2:#6b7585;
-  --good:#00e5a0;--warn:#f5a623;--bad:#ff4d6d;--stop:#ff1744;--refill:#4da6ff;
-  --row-stop:rgba(255,23,68,0.07);--row-refill:rgba(77,166,255,0.07);
-  --row-reduce:rgba(245,166,35,0.05);
-  --grid:rgba(0,229,160,0.03);
-  --radius:6px;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:repeating-linear-gradient(0deg,transparent,transparent 39px,var(--grid) 40px),
-             repeating-linear-gradient(90deg,transparent,transparent 39px,var(--grid) 40px);}
-::-webkit-scrollbar{width:5px;height:5px;}
-::-webkit-scrollbar-track{background:var(--bg);}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;500;600;700&family=Barlow:wght@300;400;500&display=swap');
 
-/* ============================================================
-   HEADER
-   ============================================================ */
-header{
-  position:sticky;top:0;z-index:200;
-  padding:11px 24px;border-bottom:1px solid var(--border);
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
-  background:rgba(8,10,14,0.97);backdrop-filter:blur(14px);
-}
-.logo{display:flex;align-items:center;gap:9px;}
-.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);
-  box-shadow:0 0 8px var(--accent);animation:pulse 2.2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
-.logo-text{font-size:12px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);}
-.logo-ver{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);padding:2px 5px;border:1px solid var(--border2);border-radius:2px;margin-left:3px;}
-.hdr-right{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+  :root {
+    --bg0: #09090f;
+    --bg1: #0f101a;
+    --bg2: #141620;
+    --bg3: #1a1d2e;
+    --bg4: #21253a;
+    --border: #2a2f4a;
+    --border2: #353b5a;
+    --text: #c8cfe0;
+    --text2: #7a829e;
+    --text3: #454e6a;
+    --accent: #00d4ff;
+    --accent2: #0094b3;
+    --green: #00e5a0;
+    --green2: #00a370;
+    --red: #ff4560;
+    --red2: #b32040;
+    --orange: #ffaa00;
+    --orange2: #b37700;
+    --purple: #9d7aff;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
 
-/* header controls */
-.hdr-ctrl{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:6px 11px;}
-.hdr-ctrl label{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;white-space:nowrap;}
-.hdr-ctrl input,.hdr-ctrl select{
-  background:transparent;border:none;border-bottom:1px dashed var(--border2);
-  color:var(--gold);font-family:'Space Mono',monospace;font-size:13px;font-weight:700;
-  outline:none;text-align:center;
-}
-.hdr-ctrl input{width:38px;}
-.hdr-ctrl select{width:68px;cursor:pointer;-webkit-appearance:none;padding-right:4px;}
-.hdr-ctrl select option{background:#1a1e28;color:var(--text);}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg0);
+    color: var(--text);
+    font-family: var(--body);
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
 
-.btn{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.09em;padding:7px 14px;
-  border-radius:var(--radius);cursor:pointer;border:1px solid var(--accent);
-  background:transparent;color:var(--accent);transition:all .14s;text-transform:uppercase;white-space:nowrap;}
-.btn:hover{background:var(--accent);color:#000;}
-.btn-primary{background:var(--accent);color:#000;}
-.btn-primary:hover{background:#00c488;}
-.btn-ghost{border-color:var(--border2);color:var(--muted2);}
-.btn-ghost:hover{border-color:var(--accent);color:var(--accent);background:transparent;}
-.btn-danger{border-color:var(--bad);color:var(--bad);}
-.btn-danger:hover{background:var(--bad);color:#fff;}
+  /* SCANLINE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
 
-/* ============================================================
-   MAIN LAYOUT
-   ============================================================ */
-main{position:relative;z-index:1;padding:16px 24px;display:flex;flex-direction:column;gap:14px;}
+  /* HEADER */
+  #header {
+    background: var(--bg1);
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    min-height: 52px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+  }
+  .logo {
+    font-family: var(--head);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-dot { width:8px; height:8px; background:var(--accent); border-radius:50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,212,255,0.4)} 50%{opacity:0.7;box-shadow:0 0 0 6px rgba(0,212,255,0)} }
 
-.sec-label{font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);
-  display:flex;align-items:center;gap:9px;margin-bottom:8px;}
-.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+  .header-sep { flex:1; }
+  .header-ctrl { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
-/* ============================================================
-   VALUATION STRIP
-   ============================================================ */
-.val-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:9px;}
-.val-card{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--border);border-radius:var(--radius);padding:12px 14px;}
-.val-lbl{font-size:8px;letter-spacing:0.13em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
-.val-input{background:transparent;border:none;border-bottom:1px dashed var(--border2);
-  color:var(--gold);font-family:'Space Mono',monospace;font-size:16px;font-weight:700;
-  width:100%;outline:none;padding:1px 0;}
-.val-computed{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:var(--muted);}
-.val-sub{font-size:9px;color:var(--muted);margin-top:3px;}
+  .mode-toggle {
+    display: flex;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .mode-btn {
+    padding: 5px 12px;
+    font-family: var(--head);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active { background: var(--accent2); color: #fff; }
 
-/* ============================================================
-   HUB PANEL
-   ============================================================ */
-.hub-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;}
-.hub-inputs{display:grid;grid-template-columns:repeat(6,1fr) 150px;gap:8px;align-items:end;}
-.hub-inp-col label{font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:4px;}
-.hub-inp-col input{background:var(--bg);border:1px solid var(--border2);color:var(--gold);
-  font-family:'Space Mono',monospace;font-size:12px;width:100%;padding:6px 7px;
-  border-radius:4px;outline:none;transition:border .14s;}
-.hub-inp-col input:focus{border-color:var(--accent);}
-.hub-status-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:10px;}
-.hub-cell{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:7px 9px;}
-.hub-cell-lbl{font-size:8px;color:var(--muted);letter-spacing:0.07em;text-transform:uppercase;margin-bottom:3px;}
-.hub-cell-val{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;}
-.hub-cell-note{font-size:8px;margin-top:2px;}
-#hub-risk-badge{padding:8px 13px;border-radius:var(--radius);font-family:'Space Mono',monospace;
-  font-size:10px;font-weight:700;letter-spacing:0.09em;border:1px solid var(--border);
-  background:rgba(90,96,112,0.15);color:var(--muted);white-space:nowrap;display:block;text-align:center;}
+  .plan-mode {
+    display: flex;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .plan-btn {
+    padding: 5px 12px;
+    font-family: var(--head);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .plan-btn.active { background: var(--purple); color: #fff; }
 
-/* ============================================================
-   TABS
-   ============================================================ */
-.tabs{display:flex;gap:3px;flex-wrap:wrap;}
-.tab{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.07em;
-  padding:7px 13px;border-radius:var(--radius);cursor:pointer;
-  border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .14s;}
-.tab.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700;}
-.tab:hover:not(.active){border-color:var(--accent);color:var(--accent);}
-.tab-panel{display:none;}
-.tab-panel.active{display:block;}
+  .btn {
+    padding: 5px 14px;
+    font-family: var(--head);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    background: var(--bg3);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.danger { border-color: var(--red2); color: var(--red); }
+  .btn.danger:hover { background: var(--red2); color: #fff; }
+  .btn.success { border-color: var(--green2); color: var(--green); }
+  .btn.primary { background: var(--accent2); border-color: var(--accent); color: #fff; }
 
-/* ============================================================
-   PANELS / GRIDS
-   ============================================================ */
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;}
-.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 17px;}
-.panel-title{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);
-  margin-bottom:12px;display:flex;align-items:center;gap:6px;}
-.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+  .file-btn {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+  }
+  .file-btn input[type=file] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 0;
+  }
 
-/* ============================================================
-   TABLES
-   ============================================================ */
-.tbl-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;}
-th{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:0.1em;text-transform:uppercase;
-  color:var(--muted);padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);
-  background:rgba(0,229,160,0.02);white-space:nowrap;}
-td{padding:6px 8px;border-bottom:1px solid rgba(28,32,48,0.7);font-family:'Space Mono',monospace;font-size:11px;vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(255,255,255,0.01);}
+  /* TABS NAV (Planning / Live) */
+  #tabs-nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+    background: var(--bg1);
+  }
+  .tab-nav-btn {
+    padding: 10px 20px;
+    font-family: var(--head);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text2);
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: all 0.2s;
+  }
+  .tab-nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-/* row heat */
-tr.row-stop td{background:var(--row-stop)!important;}
-tr.row-refill td{background:var(--row-refill)!important;}
-tr.row-reduce td{background:var(--row-reduce)!important;}
+  /* MAIN */
+  #main { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; max-width: 1400px; margin: 0 auto; }
 
-td input{background:transparent;border:1px solid transparent;color:var(--gold);
-  font-family:'Space Mono',monospace;font-size:11px;width:68px;outline:none;
-  padding:2px 5px;border-radius:3px;text-align:center;transition:border .14s;}
-td input:focus{border-color:var(--accent);background:rgba(0,229,160,0.04);}
-.pname{font-weight:700;color:var(--text);font-family:'Syne',sans-serif;font-size:11px;letter-spacing:0.04em;white-space:nowrap;}
+  /* SECTION */
+  .section {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-title {
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    flex: 1;
+  }
+  .section-toggle { font-size: 10px; color: var(--text3); transition: transform 0.2s; }
+  .section.collapsed .section-toggle { transform: rotate(-90deg); }
+  .section.collapsed .section-body { display: none; }
+  .section-body { padding: 10px 12px; }
 
-/* ============================================================
-   BADGES
-   ============================================================ */
-.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:8px;letter-spacing:0.09em;text-transform:uppercase;font-weight:700;white-space:nowrap;}
-.bg-good{background:rgba(0,229,160,0.1);color:var(--good);border:1px solid rgba(0,229,160,0.22);}
-.bg-warn{background:rgba(245,166,35,0.1);color:var(--warn);border:1px solid rgba(245,166,35,0.22);}
-.bg-bad{background:rgba(255,77,109,0.1);color:var(--bad);border:1px solid rgba(255,77,109,0.22);}
-.bg-stop{background:rgba(255,23,68,0.12);color:var(--stop);border:1px solid rgba(255,23,68,0.28);}
-.bg-refill{background:rgba(77,166,255,0.12);color:var(--refill);border:1px solid rgba(77,166,255,0.28);}
-.bg-muted{background:rgba(78,86,104,0.12);color:var(--muted2);border:1px solid rgba(78,86,104,0.22);}
+  /* TABLES */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .data-table th {
+    font-family: var(--head);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text2);
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    background: var(--bg2);
+    white-space: nowrap;
+  }
+  .data-table th:first-child { text-align: left; }
+  .data-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    text-align: right;
+    vertical-align: middle;
+  }
+  .data-table td:first-child { text-align: left; color: var(--text); font-weight: 500; }
+  .data-table tr:hover td { background: rgba(0,212,255,0.03); }
 
-.action-pill{display:inline-block;padding:3px 9px;border-radius:4px;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;white-space:nowrap;}
-.ap-SHIP{background:rgba(0,229,160,0.13);color:var(--good);border:1px solid rgba(0,229,160,0.35);}
-.ap-REDUCE{background:rgba(245,166,35,0.13);color:var(--warn);border:1px solid rgba(245,166,35,0.35);}
-.ap-STOP{background:rgba(255,23,68,0.15);color:var(--stop);border:1px solid rgba(255,23,68,0.4);}
-.ap-REFILL{background:rgba(77,166,255,0.13);color:var(--refill);border:1px solid rgba(77,166,255,0.35);}
+  .prod-code { color: var(--accent); font-weight: bold; }
+  .prod-name { color: var(--text2); font-size: 11px; margin-left: 4px; }
 
-/* heat cells */
-.heat-high{color:var(--good)!important;font-weight:700;}
-.heat-mid{color:var(--warn)!important;}
-.heat-low{color:var(--bad)!important;}
+  /* EDITABLE CELLS */
+  .editable {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-align: right;
+    width: 72px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: background 0.15s;
+  }
+  .editable:focus {
+    outline: none;
+    background: var(--bg4);
+    border: 1px solid var(--accent2);
+  }
 
-/* ============================================================
-   ADVICE / FORMULA CARDS
-   ============================================================ */
-.advice{background:rgba(0,229,160,0.04);border:1px solid rgba(0,229,160,0.16);border-radius:var(--radius);padding:11px 14px;font-size:11px;line-height:1.75;color:var(--text);}
-.advice strong{color:var(--accent);}
-.advice-warn{background:rgba(245,166,35,0.04);border-color:rgba(245,166,35,0.16);}
-.advice-warn strong,.advice-warn b{color:var(--warn);}
-.advice-bad{background:rgba(255,77,109,0.04);border-color:rgba(255,77,109,0.16);}
+  /* DELTA INDICATORS */
+  .delta-pos { color: var(--green); }
+  .delta-neg { color: var(--red); }
+  .delta-zero { color: var(--text3); }
 
-.fcard{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:9px 11px;
-  font-family:'Space Mono',monospace;font-size:10px;line-height:1.85;margin-bottom:6px;}
-.fcard .fl{color:var(--accent);font-weight:700;}
-.fcard .fn{color:var(--muted);}
+  /* STATUS BADGES */
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: var(--head);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .badge-ok { background: rgba(0,229,160,0.15); color: var(--green); border: 1px solid rgba(0,229,160,0.3); }
+  .badge-low { background: rgba(255,170,0,0.15); color: var(--orange); border: 1px solid rgba(255,170,0,0.3); }
+  .badge-insuf { background: rgba(255,69,96,0.15); color: var(--red); border: 1px solid rgba(255,69,96,0.3); }
+  .badge-due { background: rgba(157,122,255,0.15); color: var(--purple); border: 1px solid rgba(157,122,255,0.3); }
+  .badge-hold { background: rgba(122,130,158,0.15); color: var(--text2); border: 1px solid var(--border); }
+  .badge-priority { background: rgba(255,69,96,0.2); color: var(--red); border: 1px solid var(--red2); }
 
-/* ============================================================
-   VELOCITY BARS
-   ============================================================ */
-.vrow{display:flex;align-items:center;gap:7px;margin-bottom:6px;}
-.vname{font-size:10px;min-width:76px;}
-.vbar{height:4px;border-radius:2px;background:var(--border);flex:1;overflow:hidden;}
-.vfill{height:100%;border-radius:2px;transition:width .4s ease;}
-.vscore{font-family:'Space Mono',monospace;font-size:9px;color:var(--muted);min-width:44px;text-align:right;}
+  /* REPLENISHMENT PANEL */
+  .repl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 6px;
+  }
+  .repl-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .repl-code { font-family: var(--head); font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--accent); }
+  .repl-name { font-size: 10px; color: var(--text2); }
+  .repl-qty { font-family: var(--mono); font-size: 15px; color: var(--green); margin-top: 2px; }
 
-/* ============================================================
-   CHECKLIST
-   ============================================================ */
-.checklist{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
-.chk{display:flex;align-items:flex-start;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 11px;cursor:pointer;transition:border-color .14s;}
-.chk:hover{border-color:var(--accent);}
-.chk.done{border-color:rgba(0,229,160,0.28);background:rgba(0,229,160,0.03);}
-.chk-box{width:15px;height:15px;border:1.5px solid var(--muted);border-radius:2px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .14s;margin-top:1px;}
-.chk.done .chk-box{background:var(--accent);border-color:var(--accent);}
-.chk-box svg{display:none;}
-.chk.done .chk-box svg{display:block;}
-.chk-txt{font-size:10px;line-height:1.5;color:var(--text);}
-.chk.done .chk-txt{color:var(--muted);text-decoration:line-through;}
+  /* DAYS INPUT */
+  .days-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .days-label { font-family: var(--head); font-size: 11px; letter-spacing: 1px; color: var(--text2); text-transform: uppercase; }
+  .days-input {
+    width: 70px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 4px 8px;
+    text-align: center;
+  }
+  .days-input:focus { outline: none; border-color: var(--accent); }
+  .days-status { font-family: var(--head); font-size: 11px; font-weight: 600; }
 
-/* ============================================================
-   NOTES
-   ============================================================ */
-.notes-area{width:100%;background:transparent;border:1px solid var(--border);border-radius:4px;
-  color:var(--text);font-family:'Space Mono',monospace;font-size:10px;padding:9px;
-  resize:vertical;min-height:72px;outline:none;line-height:1.6;transition:border .14s;}
-.notes-area:focus{border-color:var(--accent);}
-.notes-area::placeholder{color:var(--muted);}
+  /* VALUATION */
+  .val-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .val-select {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: var(--head);
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+  .val-select:focus { outline: none; border-color: var(--accent); }
 
-/* ============================================================
-   SUMMARY PANEL
-   ============================================================ */
-.summary-panel{background:var(--surface);border:1px solid rgba(0,229,160,0.3);border-radius:var(--radius);overflow:hidden;}
-.summary-hdr{background:var(--accent);padding:7px 18px;font-family:'Space Mono',monospace;font-size:8px;font-weight:700;letter-spacing:0.22em;color:#000;text-transform:uppercase;}
-.summary-body{padding:14px 16px;}
-.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
-.sum-item{background:var(--bg);border:1px solid var(--border2);border-radius:4px;padding:10px 12px;}
-.sum-lbl{font-size:8px;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px;}
-.sum-val{font-family:'Space Mono',monospace;font-size:10px;line-height:1.8;min-height:24px;}
+  /* RECOMMEND TABLE */
+  .rec-table th { background: var(--bg3); }
+  .send-val { color: var(--accent); font-weight: bold; }
+  .hold-val { color: var(--text3); }
 
-/* ============================================================
-   PREVIOUS ROUND INPUTS
-   ============================================================ */
-.prev-note{font-size:9px;color:var(--muted);margin-top:5px;font-family:'Space Mono',monospace;}
+  /* STATUS ROW COLORS */
+  tr.rec-ok td { }
+  tr.rec-low td:first-child { border-left: 2px solid var(--orange); }
+  tr.rec-insuf td:first-child { border-left: 2px solid var(--red); }
 
-/* ============================================================
-   TOOLTIP (hover)
-   ============================================================ */
-[data-tip]{position:relative;cursor:help;}
-[data-tip]:hover::after{
-  content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
-  background:#1a1e28;border:1px solid var(--border2);color:var(--text);
-  font-family:'Space Mono',monospace;font-size:9px;line-height:1.6;
-  padding:6px 10px;border-radius:4px;white-space:pre;z-index:999;pointer-events:none;
-  min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,0.5);
-}
+  /* LIVE VIEW */
+  #live-view { display: none; padding: 12px 16px; max-width: 1400px; margin: 0 auto; }
+  #live-view.active { display: block; }
+  #planning-view.hidden { display: none; }
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
-@media(max-width:1200px){.val-strip{grid-template-columns:repeat(3,1fr);}.hub-inputs{grid-template-columns:repeat(3,1fr);}.hub-status-grid{grid-template-columns:repeat(3,1fr);}.summary-grid{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:900px){.val-strip{grid-template-columns:1fr 1fr;}.grid2,.grid3{grid-template-columns:1fr;}.checklist{grid-template-columns:1fr 1fr;}.hub-inputs{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:600px){.val-strip{grid-template-columns:1fr;}.checklist{grid-template-columns:1fr;}.summary-grid{grid-template-columns:1fr;}}
+  .live-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 700px) {
+    .live-grid { grid-template-columns: 1fr; }
+    .header-ctrl { gap: 5px; }
+    .logo { font-size: 14px; }
+  }
+
+  .live-section {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .live-section-head {
+    padding: 7px 12px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .live-section-body { padding: 8px 10px; }
+
+  /* TOAST */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--bg3);
+    border: 1px solid var(--green2);
+    color: var(--green);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-family: var(--head);
+    font-size: 12px;
+    letter-spacing: 1px;
+    z-index: 9999;
+    display: none;
+    animation: fadeIn 0.2s;
+  }
+  #toast.error { border-color: var(--red2); color: var(--red); }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg1); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  .label { font-family: var(--head); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); }
+
+  .hub-warn {
+    background: rgba(255,170,0,0.08);
+    border: 1px solid rgba(255,170,0,0.2);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: var(--head);
+    font-size: 11px;
+    color: var(--orange);
+    display: none;
+    margin-top: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .table-wrap { overflow-x: auto; }
+
+  /* small save confirm */
+  .save-indicator {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-left: 4px;
+  }
+
+  select option { background: var(--bg3); }
+
+  .apply-btn {
+    padding: 4px 12px;
+    font-family: var(--head);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    border: 1px solid var(--accent2);
+    border-radius: 3px;
+    background: rgba(0,148,179,0.15);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .apply-btn:hover { background: var(--accent2); color: #fff; }
+
+  .info-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .info-chip .chip-label { font-family: var(--head); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); }
+
+  hr.sep { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+  .val-table-wrap { max-height: 300px; overflow-y: auto; }
 </style>
 </head>
 <body>
 
-<!-- ============================================================
-     HEADER
-     ============================================================ -->
-<header>
+<!-- HEADER -->
+<div id="header">
   <div class="logo">
     <div class="logo-dot"></div>
-    <div class="logo-text">ERP War Room</div>
-    <span class="logo-ver">v3</span>
+    ERP LOGISTICS
   </div>
-  <div class="hdr-right">
-    <div class="hdr-ctrl">
-      <label>Mode</label>
-      <select id="planning-mode" onchange="recalcAll()">
-        <option value="push">Push</option>
-        <option value="pull">Pull</option>
-      </select>
-    </div>
-    <div class="hdr-ctrl">
-      <label>Sched Days</label>
-      <input id="sched-days" type="number" min="1" max="14" value="3" oninput="recalcAll()"/>
-    </div>
-    <div class="hdr-ctrl">
-      <label>Sales Window Days</label>
-      <input id="window-days" type="number" min="1" max="30" value="3" oninput="recalcAll()"/>
-    </div>
-    <div class="hdr-ctrl">
-      <label>Round #</label>
-      <input id="round-input" type="number" min="1" max="20" placeholder="?" oninput="recalcAll()"/>
-    </div>
-    <button class="btn btn-ghost" onclick="saveState()" title="Save to localStorage">💾 Save</button>
-    <button class="btn btn-danger" onclick="confirmReset()">↺ Reset</button>
-    <button class="btn btn-primary" onclick="recalcAll()">⟳ Recalc</button>
-    <button class="btn btn-ghost" onclick="exportSummary()">↓ Export</button>
-  </div>
-</header>
-
-<main>
-
-<!-- ============================================================
-     VALUATION STRIP
-     ============================================================ -->
-<div>
-  <div class="sec-label">Company Valuation Tracker</div>
-  <div class="val-strip">
-    <div class="val-card" style="border-top-color:var(--good)">
-      <div class="val-lbl">Round 1 Valuation</div>
-      <input class="val-input" id="val1" type="number" placeholder="432000" oninput="recalcAll()"/>
-      <div class="val-sub">From ERP report</div>
-    </div>
-    <div class="val-card" style="border-top-color:var(--warn)">
-      <div class="val-lbl">Round 2 Valuation</div>
-      <input class="val-input" id="val2" type="number" placeholder="751000" oninput="recalcAll()"/>
-      <div class="val-sub">From ERP report</div>
-    </div>
-    <div class="val-card" style="border-top-color:var(--blue)">
-      <div class="val-lbl">Current Valuation</div>
-      <input class="val-input" id="valcur" type="number" placeholder="Current" oninput="recalcAll()"/>
-      <div class="val-sub">This round</div>
-    </div>
-    <div class="val-card" id="val-trend-card" style="border-top-color:var(--border)">
-      <div class="val-lbl">Trend vs Previous</div>
-      <div class="val-computed" id="val-trend">Enter values</div>
-      <div class="val-sub" id="val-trend-sub">—</div>
-    </div>
-    <div class="val-card" style="border-top-color:var(--purple)">
-      <div class="val-lbl">Target Valuation</div>
-      <input class="val-input" id="val-target" type="number" placeholder="900000" oninput="recalcAll()"/>
-      <div class="val-sub" id="val-gap">Set target to track gap</div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================
-     HUB PANEL
-     ============================================================ -->
-<div>
-  <div class="sec-label">Main Hub — Buffer Inventory</div>
-  <div class="hub-panel">
-    <div class="hub-inputs" id="hub-inputs-row"></div>
-    <div class="hub-status-grid" id="hub-status-grid"></div>
-  </div>
-</div>
-
-<!-- ============================================================
-     PREVIOUS ROUND SALES (for weighted demand forecast)
-     ============================================================ -->
-<div>
-  <div class="sec-label">Previous Round Sales — Demand Forecast (70/30 weighted average)</div>
-  <div class="panel">
-    <div class="panel-title"><span class="dot" style="background:var(--purple)"></span>Previous Round Sales (optional — improves forecast accuracy)</div>
-    <div class="tbl-wrap">
-    <table><thead><tr><th>Product</th><th>Prev North</th><th>Prev South</th><th>Prev West</th><th>Forecast N</th><th>Forecast S</th><th>Forecast W</th></tr></thead>
-    <tbody id="prev-sales-body"></tbody></table>
-    </div>
-    <div class="prev-note">Forecast = 0.7 × current sales + 0.3 × previous sales &nbsp;·&nbsp; If previous empty, forecast = current sales</div>
-  </div>
-</div>
-
-<!-- ============================================================
-     TABS
-     ============================================================ -->
-<div class="tabs">
-  <button class="tab active" onclick="switchTab('sales',this)">① Sales</button>
-  <button class="tab" onclick="switchTab('inventory',this)">② Inventory</button>
-  <button class="tab" onclick="switchTab('dashboard',this)">③ Shipments</button>
-  <button class="tab" onclick="switchTab('procurement',this)">④ Procurement</button>
-  <button class="tab" onclick="switchTab('pricing',this)">⑤ Pricing</button>
-  <button class="tab" onclick="switchTab('checklist',this)">⑥ Checklist</button>
-  <button class="tab" onclick="switchTab('notes',this)">⑦ Notes &amp; Formulas</button>
-</div>
-
-<!-- ① SALES -->
-<div class="tab-panel active" id="tab-sales">
-  <div class="grid2">
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--accent)"></span>Regional Sales This Round</div>
-      <table><thead><tr><th>Product</th><th>North</th><th>South</th><th>West</th><th>Total</th><th>Daily Demand</th></tr></thead>
-      <tbody id="sales-body"></tbody></table>
-    </div>
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--gold)"></span>Demand Share % + Velocity Ranking</div>
-      <table><thead><tr><th>Product</th><th>N %</th><th>S %</th><th>W %</th><th>Hottest</th></tr></thead>
-      <tbody id="demand-share-body"></tbody></table>
-      <div style="margin-top:14px;">
-        <div class="sec-label" style="font-size:8px;margin-bottom:8px;">Velocity Score (Forecast ÷ Total Inventory)</div>
-        <div id="velocity-rank"></div>
+  <div class="header-sep"></div>
+  <div class="header-ctrl">
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <span class="label">View</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" onclick="setView('planning')">Planning</button>
+        <button class="mode-btn" onclick="setView('live')">Live</button>
       </div>
     </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <span class="label">Mode</span>
+      <div class="plan-toggle plan-mode">
+        <button class="plan-btn active" id="btn-push" onclick="setPlanMode('push')">Push</button>
+        <button class="plan-btn" id="btn-pull" onclick="setPlanMode('pull')">Pull</button>
+      </div>
+    </div>
+    <div class="file-btn">
+      <button class="btn">▲ Sold Report</button>
+      <input type="file" accept=".xlsx,.xls,.csv" onchange="uploadSold(this)">
+    </div>
+    <div class="file-btn">
+      <button class="btn">▲ Valuation</button>
+      <input type="file" accept=".xlsx,.xls" onchange="uploadValuation(this)">
+    </div>
+    <button class="btn success" onclick="saveAll()">Save</button>
+    <button class="btn danger" onclick="resetAll()">Reset</button>
   </div>
 </div>
 
-<!-- ② INVENTORY -->
-<div class="tab-panel" id="tab-inventory">
-  <div class="grid2">
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--blue)"></span>Current Regional Warehouse Stock</div>
-      <table><thead><tr><th>Product</th><th>North WH</th><th>South WH</th><th>West WH</th><th>Total</th></tr></thead>
-      <tbody id="inv-body"></tbody></table>
-    </div>
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--bad)"></span>Regional Action Flags (per product per region)</div>
-      <div class="tbl-wrap">
-      <table>
-        <thead><tr>
-          <th>Product</th>
-          <th>Ratio N (Inv/CD)</th><th>Action N</th>
-          <th>Ratio S (Inv/CD)</th><th>Action S</th>
-          <th>Ratio W (Inv/CD)</th><th>Action W</th>
-          <th>Sell-Through</th>
-        </tr></thead>
-        <tbody id="regional-action-body"></tbody>
-      </table>
-      </div>
-      <div class="advice" style="margin-top:10px;font-size:10px;">
-        <strong>Inv/CycleDemand thresholds:</strong> &gt;2.5 = STOP &nbsp;·&nbsp; 1.5–2.5 = REDUCE &nbsp;·&nbsp; 0.8–1.5 = SHIP &nbsp;·&nbsp; &lt;0.8 = REFILL<br/>
-        <strong>Sell-Through:</strong> &gt;0.85 = Stockout risk &nbsp;·&nbsp; 0.65–0.85 = Healthy &nbsp;·&nbsp; 0.5–0.65 = Monitor &nbsp;·&nbsp; &lt;0.5 = Overstock
-      </div>
-    </div>
-  </div>
+<!-- TAB NAV -->
+<div id="tabs-nav" style="display:none">
 </div>
 
-<!-- ③ SHIPMENTS -->
-<div class="tab-panel" id="tab-dashboard">
-  <div class="advice" style="margin-bottom:11px;font-size:10px;" id="mode-formula-note"></div>
-  <div class="panel" style="margin-bottom:12px;">
-    <div class="panel-title"><span class="dot" style="background:var(--accent)"></span>Corrected Shipments — Push-aware, per-region action, zero if STOP</div>
-    <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Product</th>
-        <th>Forecast N</th><th>Inv N</th><th style="color:var(--accent)">→ Ship N</th><th>Action N</th>
-        <th>Forecast S</th><th>Inv S</th><th style="color:var(--accent)">→ Ship S</th><th>Action S</th>
-        <th>Forecast W</th><th>Inv W</th><th style="color:var(--accent)">→ Ship W</th><th>Action W</th>
-      </tr></thead>
-      <tbody id="shipment-body"></tbody>
-    </table>
-    </div>
-  </div>
-</div>
+<!-- PLANNING VIEW -->
+<div id="planning-view">
+<div id="main">
 
-<!-- ④ PROCUREMENT -->
-<div class="tab-panel" id="tab-procurement">
-  <div class="grid2">
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--warn)"></span>Network-Aware Procurement (accounts for existing stock)</div>
-      <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Product</th><th>Total Cycle Demand</th><th>Target Network Stock (×1.3)</th><th>Hub + Regional Inv</th><th>Procure Qty</th><th>Status</th></tr></thead>
-        <tbody id="proc-body"></tbody>
-      </table>
-      </div>
-      <div class="advice advice-warn" style="margin-top:10px;font-size:10px;">
-        <b>Formula:</b> Procure = max(0, totalCycleDemand × 1.3 − (Hub Inv + Total Regional Inv))<br/>
-        Cycle Demand = (forecast / windowDays) × scheduleDays &nbsp;·&nbsp; Scales correctly when planning horizon changes.
-      </div>
+  <!-- SECTION 1: Inventory State -->
+  <div class="section" id="sec-inventory">
+    <div class="section-header" onclick="toggleSection('sec-inventory')">
+      <span class="section-title">§1 — Inventory State</span>
+      <span class="section-toggle">▼</span>
     </div>
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--bad)"></span>Sell-Through &amp; Turnover</div>
-      <table>
-        <thead><tr><th>Product</th><th>Sell-Through</th><th>ST Status</th><th>Turnover</th><th>TO Status</th></tr></thead>
-        <tbody id="turnover-body"></tbody>
-      </table>
-      <div class="advice" style="margin-top:10px;font-size:10px;">
-        <strong>Sell-Through:</strong> Sales ÷ Inventory &nbsp;·&nbsp; Target 0.65–0.85<br/>
-        <strong>Turnover:</strong> Secondary metric — target 5–8 turns
+    <div class="section-body">
+      <div class="table-wrap">
+        <table class="data-table" id="inv-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>03 Hub</th>
+              <th>03N North</th>
+              <th>03S South</th>
+              <th>03W West</th>
+              <th>Δ Hub</th>
+            </tr>
+          </thead>
+          <tbody id="inv-tbody"></tbody>
+        </table>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- ⑤ PRICING -->
-<div class="tab-panel" id="tab-pricing">
-  <div class="grid2">
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--gold)"></span>Price Adjustment — Global Price, Broad Conditions Required</div>
-      <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Product</th><th>Current</th><th>Suggested</th><th>Δ</th><th>Condition</th></tr></thead>
-        <tbody id="price-body"></tbody>
-      </table>
-      </div>
-      <div class="advice advice-warn" style="margin-top:10px;font-size:10px;">
-        <b>Raise only if:</b> velocity &gt;0.7 AND demand in ≥2 regions AND inv ratio &lt;1.2<br/>
-        <b>Lower only if:</b> inv ratio &gt;2 AND overstock in ≥2 regions<br/>
-        Max ±5 per round · Price is global — one change hits every region.
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--purple)"></span>5 Execution Decisions</div>
-      <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;">
-        <div style="padding:9px 11px;background:var(--bg);border-radius:4px;border:1px solid var(--border);line-height:1.6;">① Fastest product across all regions? → check <strong style="color:var(--accent)">velocity rank</strong> in Sales tab</div>
-        <div style="padding:9px 11px;background:var(--bg);border-radius:4px;border:1px solid var(--border);line-height:1.6;">② Any STOP region flags? → <strong style="color:var(--stop)">ship zero</strong> — already done by the engine</div>
-        <div style="padding:9px 11px;background:var(--bg);border-radius:4px;border:1px solid var(--border);line-height:1.6;">③ Any REFILL flags? → <strong style="color:var(--refill)">priority shipment</strong> — engine sends max</div>
-        <div style="padding:9px 11px;background:var(--bg);border-radius:4px;border:1px solid var(--border);line-height:1.6;">④ Hub = 0? → <strong style="color:var(--stop)">HIGH RISK</strong> — procurement needed before next transfer</div>
-        <div style="padding:9px 11px;background:var(--bg);border-radius:4px;border:1px solid var(--border);line-height:1.6;">⑤ Valuation dropping? → find product with STOP flag + high inventory — that's the drag</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ⑥ CHECKLIST -->
-<div class="tab-panel" id="tab-checklist">
-  <div class="sec-label">Pre-Round Action Checklist</div>
-  <div class="checklist" id="checklist-grid"></div>
-</div>
-
-<!-- ⑦ NOTES -->
-<div class="tab-panel" id="tab-notes">
-  <div class="grid2">
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--accent)"></span>Round Observations</div>
-      <textarea class="notes-area" id="notes-main" placeholder="What moved fast? Surprises? Team decisions? ERP issues?"></textarea>
-      <div style="margin-top:10px;">
-        <div class="panel-title"><span class="dot" style="background:var(--warn)"></span>Next Round Plan</div>
-        <textarea class="notes-area" id="notes-next" placeholder="Transfer changes, procurement targets, price decisions for next round..."></textarea>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-title"><span class="dot" style="background:var(--bad)"></span>Formula Reference</div>
-      <div class="fcard"><span class="fl">Demand Forecast</span><br/><span style="color:var(--text)">= 0.7 × current sales + 0.3 × previous sales</span><br/><span class="fn">If no previous data: forecast = current sales</span></div>
-      <div class="fcard"><span class="fl">Daily Demand</span><br/><span style="color:var(--text)">= forecast / salesWindowDays</span><br/><span class="fn">Cycle Demand = dailyDemand × scheduleDays</span></div>
-      <div class="fcard"><span class="fl">Shipment [Push]</span><br/><span style="color:var(--text)">= max(0, cycleDemand × 1.2 − current WH inventory)</span><br/><span class="fn">cycleDemand = (forecast / windowDays) × scheduleDays &nbsp;·&nbsp; STOP → 0</span></div>
-      <div class="fcard"><span class="fl">Shipment [Pull]</span><br/><span style="color:var(--text)">= max(0, cycleDemand − current WH inventory)</span><br/><span class="fn">Reorder point = cycleDemand (one full scheduling cycle)</span></div>
-      <div class="fcard"><span class="fl">Procurement</span><br/><span style="color:var(--text)">= max(0, totalCycleDemand × 1.3 − availableStock)</span><br/><span class="fn">totalCycleDemand = sum of cycleDemand across all regions</span></div>
-      <div class="fcard"><span class="fl">Sell-Through</span><br/><span style="color:var(--text)">= sales / inventory &nbsp;·&nbsp; target 0.65–0.85</span></div>
-      <div class="fcard"><span class="fl">Action Thresholds (Inv/Sales per region)</span><br/><span style="color:var(--text)">&gt;2.5 STOP · 1.5–2.5 REDUCE · 0.8–1.5 SHIP · &lt;0.8 REFILL</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- ============================================================
-     NEXT ROUND SUMMARY — always visible
-     ============================================================ -->
-<div>
-  <div class="summary-panel">
-    <div class="summary-hdr">⚡ Next Round Actions — Auto-generated · Click Recalc to refresh</div>
-    <div class="summary-body">
-      <div class="summary-grid">
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--stop)">🛑 STOP / REDUCE Shipments</div>
-          <div class="sum-val" id="sum-stop" style="color:var(--muted);font-style:italic">—</div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="apply-btn" onclick="applyInventory()">Apply Inventory Updates</button>
+        <span class="save-indicator" id="inv-save-time"></span>
+        <div class="file-btn">
+          <button class="btn" style="font-size:11px;padding:4px 10px;">▲ Hub Inventory File</button>
+          <input type="file" accept=".xlsx,.xls,.csv" onchange="uploadHubInventory(this)">
         </div>
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--good)">✓ Ship Normally</div>
-          <div class="sum-val" id="sum-normal" style="color:var(--muted);font-style:italic">—</div>
+      </div>
+      <div class="hub-warn" id="hub-warn">⚠ Hub inventory is low — replenishment recommended before transfers</div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Sold Quantities -->
+  <div class="section" id="sec-sold">
+    <div class="section-header" onclick="toggleSection('sec-sold')">
+      <span class="section-title">§2 — Sold Quantity State</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-body">
+      <div class="table-wrap">
+        <table class="data-table" id="sold-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>03N Sold</th>
+              <th>03S Sold</th>
+              <th>03W Sold</th>
+            </tr>
+          </thead>
+          <tbody id="sold-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+        <button class="apply-btn" onclick="applySold()">Apply Sold Updates</button>
+        <span class="save-indicator" id="sold-save-time"></span>
+      </div>
+      <p style="margin-top:6px;font-size:11px;color:var(--text3);">Values replace previous — do not accumulate. Upload a sold report via the header button.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Replenishment Panel -->
+  <div class="section" id="sec-repl">
+    <div class="section-header" onclick="toggleSection('sec-repl')">
+      <span class="section-title">§3 — Replenishment Schedule</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-body">
+      <p style="font-size:11px;color:var(--text2);margin-bottom:8px;">Hub <span style="color:var(--accent)">03</span> receives fixed stock every <span style="color:var(--purple)">5 days</span>:</p>
+      <div class="repl-grid" id="repl-grid"></div>
+      <div class="days-row">
+        <span class="days-label">Days since last replenishment:</span>
+        <input class="days-input" type="number" min="0" max="10" id="days-input" value="0" oninput="updateDaysStatus()">
+        <span class="days-status" id="days-status"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: Valuation History -->
+  <div class="section" id="sec-val">
+    <div class="section-header" onclick="toggleSection('sec-val')">
+      <span class="section-title">§4 — Valuation History</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-body">
+      <div class="val-controls">
+        <span class="label">Valuation Round:</span>
+        <select class="val-select" id="val-round-select" onchange="renderValuation()">
+          <option value="">— Select Round —</option>
+        </select>
+        <span class="save-indicator" id="val-save-info"></span>
+      </div>
+      <div class="val-table-wrap">
+        <div id="val-display"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: Transfer Recommendations -->
+  <div class="section" id="sec-rec">
+    <div class="section-header" onclick="toggleSection('sec-rec')">
+      <span class="section-title">§5 — Transfer Recommendations</span>
+      <span class="section-toggle">▼</span>
+    </div>
+    <div class="section-body">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+        <span class="info-chip"><span class="chip-label">Mode</span><span id="rec-mode-label">PUSH</span></span>
+        <span class="info-chip"><span class="chip-label">Safety Factor</span><span id="rec-sf">1.2</span></span>
+        <button class="apply-btn" onclick="computeRecommendations()">↻ Recalculate</button>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table rec-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Hub Stock</th>
+              <th>Send → 03N</th>
+              <th>Send → 03S</th>
+              <th>Send → 03W</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="rec-tbody"></tbody>
+        </table>
+      </div>
+      <div class="hub-warn" id="rec-hub-warn">⚠ Hub stock insufficient for all recommended transfers. Higher-demand regions prioritized.</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /planning-view -->
+
+<!-- LIVE VIEW -->
+<div id="live-view">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+    <span class="info-chip"><span class="chip-label">Planning Mode</span><span id="live-mode-label">PUSH</span></span>
+    <span class="info-chip"><span class="chip-label">Hub 03 Total</span><span id="live-hub-total">—</span></span>
+    <button class="apply-btn" onclick="computeRecommendations(); renderLive();">↻ Refresh</button>
+  </div>
+  <div class="live-grid">
+    <div class="live-section">
+      <div class="live-section-head">Quick Hub Inventory Update</div>
+      <div class="live-section-body">
+        <div class="table-wrap">
+          <table class="data-table" id="live-hub-table">
+            <thead>
+              <tr><th>Product</th><th>Current Hub</th><th>New Value</th></tr>
+            </thead>
+            <tbody id="live-hub-tbody"></tbody>
+          </table>
         </div>
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--refill)">🔺 Emergency Refill</div>
-          <div class="sum-val" id="sum-refill" style="color:var(--muted);font-style:italic">—</div>
+        <div style="margin-top:8px;">
+          <button class="apply-btn" onclick="applyLiveHub()">Apply Hub Update</button>
         </div>
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--warn)">📦 Procure More Of</div>
-          <div class="sum-val" id="sum-procure" style="color:var(--muted);font-style:italic">—</div>
+      </div>
+    </div>
+    <div class="live-section">
+      <div class="live-section-head">Quick Sold Update</div>
+      <div class="live-section-body">
+        <div class="table-wrap">
+          <table class="data-table" id="live-sold-table">
+            <thead>
+              <tr><th>Product</th><th>03N</th><th>03S</th><th>03W</th></tr>
+            </thead>
+            <tbody id="live-sold-tbody"></tbody>
+          </table>
         </div>
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--purple)">💰 Price Raise Candidate</div>
-          <div class="sum-val" id="sum-raise" style="color:var(--muted);font-style:italic">—</div>
+        <div style="margin-top:8px;">
+          <button class="apply-btn" onclick="applyLiveSold()">Apply Sold Update</button>
         </div>
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--bad)">📉 Price Decrease Candidate</div>
-          <div class="sum-val" id="sum-decrease" style="color:var(--muted);font-style:italic">—</div>
-        </div>
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--bad)">⚠ Do NOT Raise Price</div>
-          <div class="sum-val" id="sum-avoid" style="color:var(--muted);font-style:italic">—</div>
-        </div>
-        <div class="sum-item">
-          <div class="sum-lbl" style="color:var(--muted2)">🏭 Hub Risk Status</div>
-          <div class="sum-val" id="sum-hub" style="color:var(--muted);font-style:italic">—</div>
+      </div>
+    </div>
+    <div class="live-section" style="grid-column:1/-1">
+      <div class="live-section-head">Transfer Recommendations</div>
+      <div class="live-section-body">
+        <div class="table-wrap">
+          <table class="data-table rec-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Hub Stock</th>
+                <th>→ 03N</th>
+                <th>→ 03S</th>
+                <th>→ 03W</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="live-rec-tbody"></tbody>
+          </table>
         </div>
       </div>
     </div>
   </div>
-</div>
+</div><!-- /live-view -->
 
-</main>
+<!-- TOAST -->
+<div id="toast"></div>
 
-<footer style="position:relative;z-index:1;padding:11px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-  <div style="font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;">
-    ① Sales → ② Inventory → Recalc → ③ Shipments → ④ Procurement → scroll down for actions
-  </div>
-  <div style="display:flex;gap:6px;">
-    <button class="btn btn-ghost" onclick="saveState()">💾 Save Progress</button>
-    <button class="btn" onclick="exportSummary()">↓ Export .txt</button>
-  </div>
-</footer>
-
-<!-- ============================================================
-     JAVASCRIPT — Clean Architecture
-     STATE → INPUT PARSING → CALCULATION ENGINE → RENDERING → EVENTS → EXPORT
-     ============================================================ -->
 <script>
-'use strict';
-
-/* ============================================================
-   SECTION 1: STATE
-   ============================================================ */
-const PRODUCTS = ['Milk','Cream','Yoghurt','Cheese','Butter','Ice Cream'];
-const REGIONS  = ['North','South','West'];
-const DEF_PRICES = {Milk:40,Cream:70,Yoghurt:28.43,Cheese:90,Butter:65.87,'Ice Cream':42};
+// ============================================================
+// DATA DEFINITIONS
+// ============================================================
+const PRODUCTS = [
+  { code: 'T01', name: 'Milk' },
+  { code: 'T02', name: 'Cream' },
+  { code: 'T03', name: 'Yoghurt' },
+  { code: 'T04', name: 'Cheese' },
+  { code: 'T05', name: 'Butter' },
+  { code: 'T06', name: 'Ice Cream' },
+];
+const WAREHOUSES = ['03N','03S','03W'];
+const HUB = '03';
+const REPLENISHMENT = { T01:950, T02:300, T03:700, T04:350, T05:400, T06:300 };
+const REPLENISHMENT_DAYS = 5;
 const SAFETY_FACTOR = 1.2;
-const PROC_FACTOR   = 1.3;
 
+// ============================================================
+// STATE
+// ============================================================
 let state = {
-  mode: 'push',
-  scheduleDays: 3,
-  windowDays: 3,
-  round: null,
-  products: {}
+  planMode: 'push', // 'push' | 'pull'
+  inventory: {}, // { T01: { '03': 0, '03N': 0, '03S': 0, '03W': 0, prevHub: 0 }, ... }
+  sold: {},       // { T01: { '03N': 0, '03S': 0, '03W': 0 }, ... }
+  valuation: {},  // { 'Round 1': [...rows], ... }
+  daysSinceRepl: 0,
+  savedAt: null,
 };
 
-// Initialize product structure
 function initState() {
   PRODUCTS.forEach(p => {
-    state.products[p] = {
-      salesNorth:0, salesSouth:0, salesWest:0,
-      prevNorth:0,  prevSouth:0,  prevWest:0,
-      invNorth:0,   invSouth:0,   invWest:0,
-      hubInventory: 0,
-      price: DEF_PRICES[p]
-    };
+    state.inventory[p.code] = { '03':0, '03N':0, '03S':0, '03W':0, prevHub:0 };
+    state.sold[p.code] = { '03N':0, '03S':0, '03W':0 };
   });
 }
-initState();
 
-// Derived helpers — always computed from state
-const sales  = (p,r) => state.products[p][`sales${r}`]    || 0;
-const prev   = (p,r) => state.products[p][`prev${r}`]     || 0;
-const inv    = (p,r) => state.products[p][`inv${r}`]      || 0;
-const hub    = (p)   => state.products[p].hubInventory     || 0;
-const price  = (p)   => state.products[p].price            || DEF_PRICES[p];
-
-/* ============================================================
-   SECTION 2: CALCULATION ENGINE
-   All logic lives here. UI never recalculates independently.
-   ============================================================ */
-
-// Weighted demand forecast per region
-function forecast(p, r) {
-  const cur  = sales(p, r);
-  const prv  = prev(p, r);
-  if (prv > 0) return 0.7 * cur + 0.3 * prv;
-  return cur;
+// ============================================================
+// LOCAL STORAGE
+// ============================================================
+function saveAll() {
+  state.savedAt = new Date().toISOString();
+  localStorage.setItem('erp_state', JSON.stringify(state));
+  showToast('State saved');
 }
 
-function totalForecast(p) {
-  return REGIONS.reduce((a, r) => a + forecast(p, r), 0);
+function loadAll() {
+  const raw = localStorage.getItem('erp_state');
+  if (raw) {
+    try {
+      const loaded = JSON.parse(raw);
+      // merge carefully
+      state.planMode = loaded.planMode || 'push';
+      state.daysSinceRepl = loaded.daysSinceRepl || 0;
+      state.valuation = loaded.valuation || {};
+      state.savedAt = loaded.savedAt || null;
+      // inventory & sold
+      PRODUCTS.forEach(p => {
+        if (loaded.inventory && loaded.inventory[p.code]) {
+          state.inventory[p.code] = { ...state.inventory[p.code], ...loaded.inventory[p.code] };
+        }
+        if (loaded.sold && loaded.sold[p.code]) {
+          state.sold[p.code] = { ...state.sold[p.code], ...loaded.sold[p.code] };
+        }
+      });
+    } catch(e) { console.warn('Failed to load state', e); }
+  }
 }
 
-function totalInv(p) {
-  return REGIONS.reduce((a, r) => a + inv(p, r), 0);
+function resetAll() {
+  if (!confirm('Reset all data? This cannot be undone.')) return;
+  localStorage.removeItem('erp_state');
+  initState();
+  state.planMode = 'push';
+  state.daysSinceRepl = 0;
+  state.valuation = {};
+  renderAll();
+  showToast('Reset complete');
 }
 
-function totalSales(p) {
-  return REGIONS.reduce((a, r) => a + sales(p, r), 0);
-}
+// ============================================================
+// VIEW SWITCHING
+// ============================================================
+let currentView = 'planning';
 
-// Daily demand based on window days
-function dailyDemand(p, r) {
-  return forecast(p, r) / Math.max(1, state.windowDays);
-}
-
-// Cycle demand based on schedule days
-function cycleDemand(p, r) {
-  return dailyDemand(p, r) * state.scheduleDays;
-}
-
-// Regional action flag — per product per region
-// Uses cycleDemand as denominator so ratio reflects actual cycle coverage,
-// not raw forecast window. Accurate when scheduleDays ≠ windowDays.
-function regionalAction(p, r) {
-  const cd = cycleDemand(p, r);
-  const i  = inv(p, r);
-  if (cd === 0) return null;
-  const ratio = i / cd;
-  if (ratio > 2.5)  return 'STOP';
-  if (ratio > 1.5)  return 'REDUCE';
-  if (ratio >= 0.8) return 'SHIP';
-  return 'REFILL';
-}
-
-// Core shipment engine — single source of truth
-function calcShipment(p, r) {
-  const action = regionalAction(p, r);
-  if (action === 'STOP') return 0;
-
-  const cd = cycleDemand(p, r);
-  if (cd === 0) return 0;
-
-  const curInv = inv(p, r);
-
-  if (state.mode === 'push') {
-    // Push: target stock = cycleDemand × safetyFactor, scaled to planning horizon
-    const targetStock = cd * SAFETY_FACTOR;
-    return Math.max(0, Math.round(targetStock - curInv));
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  if (v === 'planning') {
+    document.getElementById('planning-view').classList.remove('hidden');
+    document.getElementById('live-view').classList.remove('active');
   } else {
-    // Pull: reorder to cover exactly one cycle
-    const reorderPoint = cd;
-    return Math.max(0, Math.round(reorderPoint - curInv));
+    document.getElementById('planning-view').classList.add('hidden');
+    document.getElementById('live-view').classList.add('active');
+    renderLive();
   }
 }
 
-// Sell-through (primary metric)
-function sellThrough(p) {
-  const ti = totalInv(p);
-  const ts = totalSales(p);
-  return ti > 0 && ts > 0 ? ts / ti : null;
+function setPlanMode(m) {
+  state.planMode = m;
+  document.getElementById('btn-push').classList.toggle('active', m === 'push');
+  document.getElementById('btn-pull').classList.toggle('active', m === 'pull');
+  document.getElementById('rec-mode-label').textContent = m.toUpperCase();
+  document.getElementById('live-mode-label').textContent = m.toUpperCase();
+  document.getElementById('rec-sf').textContent = m === 'push' ? '1.2' : '1.0';
+  computeRecommendations();
 }
 
-function sellThroughStatus(st) {
-  if (st === null) return ['—', ''];
-  if (st > 0.85)  return [mkBadge('Stockout Risk','bg-stop'), 'heat-low'];
-  if (st >= 0.65) return [mkBadge('Healthy','bg-good'),       'heat-high'];
-  if (st >= 0.50) return [mkBadge('Monitor','bg-warn'),       'heat-mid'];
-  return              [mkBadge('Overstock','bg-bad'),          'heat-low'];
+function toggleSection(id) {
+  document.getElementById(id).classList.toggle('collapsed');
 }
 
-// Inventory turnover (secondary)
-function turnover(p) {
-  const ti = totalInv(p);
-  const ts = totalSales(p);
-  return ti > 0 ? ts / ti : null;
-}
-
-// Velocity (for ranking and hub check)
-function velocity(p) {
-  const ti = totalInv(p) + hub(p);
-  const tf = totalForecast(p);
-  return ti > 0 ? tf / ti : 0;
-}
-
-// Procurement — network-aware, uses total cycle demand so it scales with scheduleDays
-function calcProcurement(p) {
-  const totalCycleDemand = REGIONS.reduce((a, r) => a + cycleDemand(p, r), 0);
-  if (totalCycleDemand === 0) return 0;
-  const targetNetworkStock = totalCycleDemand * PROC_FACTOR;
-  const available = hub(p) + totalInv(p);
-  return Math.max(0, Math.round(targetNetworkStock - available));
-}
-
-// Price recommendation
-function priceRec(p) {
-  const tf = totalForecast(p);
-  const ti = totalInv(p);
-  const vel = velocity(p);
-  const cur = price(p);
-  const ratio = tf > 0 ? ti / tf : null;
-  const regionsSelling = REGIONS.filter(r => forecast(p, r) > 0).length;
-  const overstockedRegions = REGIONS.filter(r => {
-    const fc = forecast(p, r); const iv = inv(p, r);
-    return fc > 0 && iv / fc > 2;
-  }).length;
-
-  if (tf > 0 && ti > 0) {
-    if (vel > 0.7 && regionsSelling >= 2 && ratio !== null && ratio < 1.2)
-      return { sug: +(Math.min(cur + 5, cur * 1.06)).toFixed(2), adv: '✓ Broad demand + low stock — raise candidate' };
-    if (ratio !== null && ratio > 2 && overstockedRegions >= 2)
-      return { sug: +(Math.max(cur - 5, cur * 0.95)).toFixed(2), adv: '⚠ Overstock in ≥2 regions — decrease candidate' };
-    if (vel > 0.7 && regionsSelling < 2)
-      return { sug: cur, adv: '⚡ Fast in 1 region only — do NOT raise global price' };
-  }
-  return { sug: cur, adv: tf > 0 ? '✓ Stable — no change' : 'Enter sales data' };
-}
-
-// Hub analysis
-function hubAnalysis() {
-  const ranked = PRODUCTS
-    .map(p => ({ p, vel: velocity(p), sales: totalForecast(p) }))
-    .filter(x => x.sales > 0)
-    .sort((a, b) => b.vel - a.vel);
-  const top2 = ranked.slice(0, 2).map(x => x.p);
-
-  const results = {};
-  let anyEmpty = false;
-  let top2AtRisk = false;
-  let totalHub = 0;
-
-  PRODUCTS.forEach(p => {
-    const h = hub(p);
-    totalHub += h;
-    const cd = cycleDemand(p, 'North') + cycleDemand(p, 'South') + cycleDemand(p, 'West');
-    const covers = h >= cd;
-    if (h === 0 && totalForecast(p) > 0) anyEmpty = true;
-    if (top2.includes(p) && !covers) top2AtRisk = true;
-    results[p] = { hub: h, need: Math.round(cd), covers };
-  });
-
-  let status;
-  if (totalHub === 0) status = 'EMPTY';
-  else if (anyEmpty || top2AtRisk) status = 'AT RISK';
-  else status = 'HEALTHY';
-
-  return { results, status, top2 };
-}
-
-/* ============================================================
-   SECTION 3: INPUT PARSING
-   Reads DOM → writes to state → then engine runs
-   ============================================================ */
-function parseInputs() {
-  state.mode         = document.getElementById('planning-mode')?.value || 'push';
-  state.scheduleDays = Math.max(1, parseFloat(document.getElementById('sched-days')?.value) || 3);
-  state.windowDays   = Math.max(1, parseFloat(document.getElementById('window-days')?.value) || 3);
-  state.round        = parseFloat(document.getElementById('round-input')?.value) || null;
-
-  PRODUCTS.forEach(p => {
-    const k = K(p);
-    REGIONS.forEach(r => {
-      state.products[p][`sales${r}`] = parseFloat(document.getElementById(`s_${k}_${r}`)?.value) || 0;
-      state.products[p][`prev${r}`]  = parseFloat(document.getElementById(`pv_${k}_${r}`)?.value) || 0;
-      state.products[p][`inv${r}`]   = parseFloat(document.getElementById(`i_${k}_${r}`)?.value) || 0;
-    });
-    state.products[p].hubInventory = parseFloat(document.getElementById(`hub_${k}`)?.value) || 0;
-    state.products[p].price        = parseFloat(document.getElementById(`price_${k}`)?.value) || DEF_PRICES[p];
-  });
-}
-
-/* ============================================================
-   SECTION 4: UI RENDERING
-   ============================================================ */
-
-/* ---------- helpers ---------- */
-const K     = s => s.replace(/\s+/g,'_');
-const mkBadge = (t, cls) => `<span class="badge ${cls}">${t}</span>`;
-const mkPill  = a => a ? `<span class="action-pill ap-${a}">${a}</span>` : '—';
-
-function heatClass(v, max) {
-  if (max === 0) return '';
-  const r = v / max;
-  if (r >= 0.7) return 'heat-high';
-  if (r >= 0.35) return 'heat-mid';
-  return 'heat-low';
-}
-
-function stC(st) {
-  if (st === null) return '';
-  if (st > 0.85)  return 'heat-low';
-  if (st >= 0.65) return 'heat-high';
-  if (st >= 0.5)  return 'heat-mid';
-  return 'heat-low';
-}
-
-function actionRowClass(p) {
-  const actions = REGIONS.map(r => regionalAction(p, r)).filter(Boolean);
-  if (actions.includes('STOP'))   return 'row-stop';
-  if (actions.includes('REFILL')) return 'row-refill';
-  if (actions.includes('REDUCE')) return 'row-reduce';
-  return '';
-}
-
-/* ---------- build static input tables (called once) ---------- */
-function buildInputTables() {
-  // Sales
-  const sb = document.getElementById('sales-body'); if (!sb) return;
-  sb.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const k = K(p); const row = document.createElement('tr');
-    let c = `<td class="pname" data-tip="">${p}</td>`;
-    REGIONS.forEach(r => { c += `<td><input type="number" id="s_${k}_${r}" placeholder="0" min="0" oninput="recalcAll()"/></td>`; });
-    c += `<td class="heat-mid" id="st_${k}" style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700">—</td>`;
-    c += `<td style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)" id="sd_${k}">—</td>`;
-    row.innerHTML = c; sb.appendChild(row);
-  });
-
-  // Prev Sales
-  const pb = document.getElementById('prev-sales-body'); if (!pb) return;
-  pb.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const k = K(p); const row = document.createElement('tr');
-    let c = `<td class="pname">${p}</td>`;
-    REGIONS.forEach(r => { c += `<td><input type="number" id="pv_${k}_${r}" placeholder="0" min="0" oninput="recalcAll()"/></td>`; });
-    REGIONS.forEach(r => { c += `<td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--purple)" id="fc_${k}_${r}">—</td>`; });
-    row.innerHTML = c; pb.appendChild(row);
-  });
-
-  // Inventory
-  const ib = document.getElementById('inv-body'); if (!ib) return;
-  ib.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const k = K(p); const row = document.createElement('tr');
-    let c = `<td class="pname">${p}</td>`;
-    REGIONS.forEach(r => { c += `<td><input type="number" id="i_${k}_${r}" placeholder="0" min="0" oninput="recalcAll()"/></td>`; });
-    c += `<td style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--blue)" id="it_${k}">—</td>`;
-    row.innerHTML = c; ib.appendChild(row);
-  });
-
-  // Hub
-  const hr = document.getElementById('hub-inputs-row'); if (!hr) return;
-  hr.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const k = K(p); const col = document.createElement('div');
-    col.className = 'hub-inp-col';
-    col.innerHTML = `<label>${p}</label><input id="hub_${k}" type="number" placeholder="0" min="0" oninput="recalcAll()"/>`;
-    hr.appendChild(col);
-  });
-  const riskCol = document.createElement('div');
-  riskCol.style.cssText = 'display:flex;align-items:flex-end;';
-  riskCol.innerHTML = '<div id="hub-risk-badge">HUB: —</div>';
-  hr.appendChild(riskCol);
-
-  // Price
-  const prb = document.getElementById('price-body'); if (!prb) return;
-  prb.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const k = K(p); const row = document.createElement('tr');
-    row.innerHTML = `<td class="pname">${p}</td>
-      <td><input type="number" id="price_${k}" value="${DEF_PRICES[p]}" step="0.01" oninput="recalcAll()"/></td>
-      <td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--accent)" id="sug_${k}">—</td>
-      <td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700" id="chg_${k}">—</td>
-      <td style="font-size:10px;color:var(--muted)" id="padv_${k}">Enter data</td>`;
-    prb.appendChild(row);
-  });
-}
-
-/* ---------- render all dynamic tables ---------- */
-function renderSales() {
-  const maxSales = Math.max(1, ...PRODUCTS.map(p => totalForecast(p)));
-  PRODUCTS.forEach(p => {
-    const k = K(p);
-    const ts = totalSales(p);
-    const tf = totalForecast(p);
-    const daily = (tf / state.windowDays).toFixed(1);
-    // tooltip
-    const vel = velocity(p).toFixed(2);
-    const tip = `Sales: ${ts}\nForecast: ${tf.toFixed(0)}\nVelocity: ${vel}\nAction N: ${regionalAction(p,'North')||'—'} S: ${regionalAction(p,'South')||'—'} W: ${regionalAction(p,'West')||'—'}`;
-    const el = document.getElementById(`st_${k}`);
-    if (el) { el.textContent = ts || '—'; el.className = heatClass(tf, maxSales); el.closest('tr')?.setAttribute('data-tip', tip); }
-    const dl = document.getElementById(`sd_${k}`);
-    if (dl) dl.textContent = ts > 0 ? daily : '—';
-    REGIONS.forEach(r => {
-      const fc = document.getElementById(`fc_${k}_${r}`);
-      if (fc) fc.textContent = ts > 0 ? forecast(p, r).toFixed(0) : '—';
-    });
-  });
-}
-
-function renderDemandShare() {
-  const tb = document.getElementById('demand-share-body'); if (!tb) return; tb.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const tf = totalForecast(p); const row = document.createElement('tr');
-    let c = `<td class="pname">${p}</td>`;
-    let maxPct = 0, maxR = '—';
-    REGIONS.forEach(r => {
-      const fc = forecast(p, r); const pct = tf > 0 ? Math.round(fc / tf * 100) : 0;
-      if (pct > maxPct) { maxPct = pct; maxR = r; }
-      c += `<td style="font-size:11px" class="${pct >= 40 ? 'heat-high' : pct >= 20 ? 'heat-mid' : 'heat-low'}">${tf > 0 ? pct + '%' : '—'}</td>`;
-    });
-    c += `<td>${tf > 0 ? mkBadge(maxR, 'bg-good') : '—'}</td>`;
-    row.innerHTML = c; tb.appendChild(row);
-  });
-}
-
-function renderVelocity() {
-  const el = document.getElementById('velocity-rank'); if (!el) return;
-  const scored = PRODUCTS.map(p => ({ p, vel: velocity(p), tf: totalForecast(p) }))
-    .filter(x => x.tf > 0).sort((a, b) => b.vel - a.vel);
-  if (!scored.length) { el.innerHTML = '<div style="color:var(--muted);font-size:10px">Enter sales data</div>'; return; }
-  const maxV = scored[0].vel || 1;
-  const cols = ['var(--accent)','var(--gold)','var(--blue)','var(--text)','var(--muted2)','var(--muted)'];
-  el.innerHTML = scored.map((x, i) => `
-    <div class="vrow">
-      <span class="vname" style="color:${cols[i]}">${i+1}. ${x.p}</span>
-      <div class="vbar"><div class="vfill" style="width:${Math.round(x.vel/maxV*100)}%;background:${cols[i]}"></div></div>
-      <span class="vscore">vel ${x.vel.toFixed(2)}</span>
-    </div>`).join('');
-}
-
+// ============================================================
+// RENDER INVENTORY TABLE
+// ============================================================
 function renderInventory() {
+  const tbody = document.getElementById('inv-tbody');
+  tbody.innerHTML = '';
+  let anyLow = false;
   PRODUCTS.forEach(p => {
-    const k = K(p);
-    const ti = totalInv(p);
-    const el = document.getElementById(`it_${k}`);
-    if (el) el.textContent = ti > 0 ? ti : '—';
+    const inv = state.inventory[p.code];
+    const delta = inv['03'] - (inv.prevHub || 0);
+    const deltaClass = delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : 'delta-zero';
+    const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+    const tr = document.createElement('tr');
+    if (inv['03'] < 100) anyLow = true;
+    tr.innerHTML = `
+      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
+      <td><input class="editable" type="number" min="0" id="inv-hub-${p.code}" value="${inv['03']}" style="width:80px"></td>
+      <td><input class="editable" type="number" min="0" id="inv-03N-${p.code}" value="${inv['03N']}" style="width:72px"></td>
+      <td><input class="editable" type="number" min="0" id="inv-03S-${p.code}" value="${inv['03S']}" style="width:72px"></td>
+      <td><input class="editable" type="number" min="0" id="inv-03W-${p.code}" value="${inv['03W']}" style="width:72px"></td>
+      <td class="${deltaClass}" style="font-family:var(--mono)">${deltaStr}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('hub-warn').style.display = anyLow ? 'block' : 'none';
+}
+
+function applyInventory() {
+  PRODUCTS.forEach(p => {
+    const newHub = parseInt(document.getElementById(`inv-hub-${p.code}`).value) || 0;
+    state.inventory[p.code].prevHub = state.inventory[p.code]['03'];
+    state.inventory[p.code]['03'] = newHub;
+    state.inventory[p.code]['03N'] = parseInt(document.getElementById(`inv-03N-${p.code}`).value) || 0;
+    state.inventory[p.code]['03S'] = parseInt(document.getElementById(`inv-03S-${p.code}`).value) || 0;
+    state.inventory[p.code]['03W'] = parseInt(document.getElementById(`inv-03W-${p.code}`).value) || 0;
+  });
+  renderInventory();
+  computeRecommendations();
+  document.getElementById('inv-save-time').textContent = 'Updated ' + timeNow();
+  showToast('Inventory updated');
+}
+
+// ============================================================
+// RENDER SOLD TABLE
+// ============================================================
+function renderSold() {
+  const tbody = document.getElementById('sold-tbody');
+  tbody.innerHTML = '';
+  PRODUCTS.forEach(p => {
+    const s = state.sold[p.code];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
+      <td><input class="editable" type="number" min="0" id="sold-03N-${p.code}" value="${s['03N']}"></td>
+      <td><input class="editable" type="number" min="0" id="sold-03S-${p.code}" value="${s['03S']}"></td>
+      <td><input class="editable" type="number" min="0" id="sold-03W-${p.code}" value="${s['03W']}"></td>
+    `;
+    tbody.appendChild(tr);
   });
 }
 
-function renderRegionalActions() {
-  const tb = document.getElementById('regional-action-body'); if (!tb) return; tb.innerHTML = '';
+function applySold() {
   PRODUCTS.forEach(p => {
-    const row = document.createElement('tr');
-    row.className = actionRowClass(p);
-    let c = `<td class="pname">${p}</td>`;
-    REGIONS.forEach(r => {
-      const cd = cycleDemand(p, r); const iv = inv(p, r);
-      // ratio uses cycleDemand to match regionalAction() engine
-      const ratio = cd > 0 ? (iv / cd) : null;
-      const action = regionalAction(p, r);
-      const ratioColor = ratio === null ? 'var(--muted)' : ratio > 2.5 ? 'var(--stop)' : ratio > 1.5 ? 'var(--warn)' : ratio >= 0.8 ? 'var(--good)' : 'var(--refill)';
-      c += `<td style="font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:${ratioColor}">${ratio !== null ? ratio.toFixed(2) : '—'}</td>`;
-      c += `<td>${action ? mkPill(action) : '—'}</td>`;
+    WAREHOUSES.forEach(w => {
+      state.sold[p.code][w] = parseInt(document.getElementById(`sold-${w}-${p.code}`).value) || 0;
     });
-    // Sell-through
-    const st = sellThrough(p);
-    const [stBadge] = sellThroughStatus(st);
-    c += `<td>${stBadge}</td>`;
-    row.innerHTML = c; tb.appendChild(row);
   });
+  computeRecommendations();
+  document.getElementById('sold-save-time').textContent = 'Updated ' + timeNow();
+  showToast('Sold quantities updated (replaced)');
 }
 
-function renderShipments() {
-  const tb = document.getElementById('shipment-body'); if (!tb) return; tb.innerHTML = '';
-  // mode note
-  const note = document.getElementById('mode-formula-note');
-  if (note) {
-    const m = state.mode;
-    note.innerHTML = `<strong>Mode: ${m.toUpperCase()}</strong> &nbsp;·&nbsp; ` +
-      (m === 'push'
-        ? `Push: Shipment = max(0, cycleDemand × ${SAFETY_FACTOR} − current inv) &nbsp;·&nbsp; cycleDemand = (forecast / ${state.windowDays}d) × ${state.scheduleDays}d &nbsp;·&nbsp; STOP → 0`
-        : `Pull: Shipment = max(0, cycleDemand − current inv) &nbsp;·&nbsp; cycleDemand = (forecast / ${state.windowDays}d) × ${state.scheduleDays}d`);
+// ============================================================
+// REPLENISHMENT PANEL
+// ============================================================
+function renderReplenishment() {
+  const grid = document.getElementById('repl-grid');
+  grid.innerHTML = '';
+  PRODUCTS.forEach(p => {
+    const qty = REPLENISHMENT[p.code];
+    const div = document.createElement('div');
+    div.className = 'repl-item';
+    div.innerHTML = `<span class="repl-code">${p.code}</span><span class="repl-name">${p.name}</span><span class="repl-qty">+${qty}</span>`;
+    grid.appendChild(div);
+  });
+  document.getElementById('days-input').value = state.daysSinceRepl;
+  updateDaysStatus();
+}
+
+function updateDaysStatus() {
+  const d = parseInt(document.getElementById('days-input').value) || 0;
+  state.daysSinceRepl = d;
+  const rem = REPLENISHMENT_DAYS - d;
+  const el = document.getElementById('days-status');
+  if (rem <= 0) {
+    el.textContent = '⚡ Replenishment overdue or due now';
+    el.style.color = 'var(--red)';
+  } else if (rem === 1) {
+    el.textContent = `Due tomorrow`;
+    el.style.color = 'var(--orange)';
+  } else {
+    el.textContent = `${rem} day(s) until next replenishment`;
+    el.style.color = 'var(--green)';
   }
-
-  PRODUCTS.forEach(p => {
-    const row = document.createElement('tr');
-    row.className = actionRowClass(p);
-    let c = `<td class="pname">${p}</td>`;
-    REGIONS.forEach(r => {
-      const fc = forecast(p, r);
-      const iv = inv(p, r);
-      const ship = calcShipment(p, r);
-      const action = regionalAction(p, r);
-      const shipColor = action === 'STOP' ? 'var(--stop)' : ship > 0 ? 'var(--accent)' : 'var(--muted)';
-      c += `<td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">${fc > 0 ? fc.toFixed(0) : '—'}</td>`;
-      c += `<td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--blue)">${iv || '—'}</td>`;
-      c += `<td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:${shipColor}">${fc > 0 ? ship : '—'}</td>`;
-      c += `<td>${action ? mkPill(action) : '—'}</td>`;
-    });
-    row.innerHTML = c; tb.appendChild(row);
-  });
+  computeRecommendations();
 }
 
-function renderProcurement() {
-  const tb = document.getElementById('proc-body'); if (!tb) return; tb.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const tcd    = REGIONS.reduce((a, r) => a + cycleDemand(p, r), 0); // total cycle demand
-    const ti     = totalInv(p);
-    const h      = hub(p);
-    const tns    = Math.round(tcd * PROC_FACTOR);
-    const avail  = h + ti;
-    const procure = calcProcurement(p);
-    let st;
-    if (tcd === 0) st = '—';
-    else if (procure === 0) st = mkBadge('Stocked','bg-good');
-    else if (avail === 0)   st = mkBadge('EMPTY—Order','bg-stop');
-    else if (procure < tcd) st = mkBadge('Top-up','bg-warn');
-    else                    st = mkBadge('Order Now','bg-bad');
-    const row = document.createElement('tr');
-    row.innerHTML = `<td class="pname">${p}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:11px">${tcd > 0 ? tcd.toFixed(0) : '—'}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--muted)">${tcd > 0 ? tns : '—'}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:11px;color:var(--blue)">${avail > 0 ? avail : '—'}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--warn)">${tcd > 0 ? procure : '—'}</td>
-      <td>${tcd > 0 ? st : '—'}</td>`;
-    tb.appendChild(row);
+// ============================================================
+// VALUATION
+// ============================================================
+function renderValuationDropdown() {
+  const sel = document.getElementById('val-round-select');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Select Round —</option>';
+  const rounds = Object.keys(state.valuation).sort();
+  rounds.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r;
+    opt.textContent = r;
+    sel.appendChild(opt);
   });
-}
-
-function renderTurnover() {
-  const tb = document.getElementById('turnover-body'); if (!tb) return; tb.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const st  = sellThrough(p);
-    const to  = turnover(p);
-    const [stBadge, stCls] = sellThroughStatus(st);
-    let tBadge;
-    if (to === null) tBadge = mkBadge('No data','bg-muted');
-    else if (to >= 5 && to <= 8) tBadge = mkBadge('Ideal','bg-good');
-    else if (to > 8)             tBadge = mkBadge('Stockout','bg-stop');
-    else                         tBadge = mkBadge('Overstock','bg-warn');
-    const row = document.createElement('tr');
-    row.innerHTML = `<td class="pname">${p}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700" class="${stCls}">${st ? st.toFixed(2) : '—'}</td>
-      <td>${stBadge}</td>
-      <td style="font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:${to && to >= 5 && to <= 8 ? 'var(--good)' : to && to > 8 ? 'var(--stop)' : 'var(--warn)'}">${to ? to.toFixed(2) : '—'}</td>
-      <td>${tBadge}</td>`;
-    tb.appendChild(row);
-  });
-}
-
-function renderPricing() {
-  PRODUCTS.forEach(p => {
-    const k = K(p);
-    const rec = priceRec(p);
-    const cur = price(p);
-    const chg = +(rec.sug - cur).toFixed(2);
-    const chgColor = chg > 0 ? 'var(--good)' : chg < 0 ? 'var(--bad)' : 'var(--muted)';
-    const sugEl = document.getElementById(`sug_${k}`);
-    const chgEl = document.getElementById(`chg_${k}`);
-    const advEl = document.getElementById(`padv_${k}`);
-    if (sugEl) sugEl.textContent = totalForecast(p) > 0 ? rec.sug : '—';
-    if (chgEl) { chgEl.textContent = totalForecast(p) > 0 ? (chg >= 0 ? '+' : '') + chg : '—'; chgEl.style.color = chgColor; }
-    if (advEl) advEl.textContent = rec.adv;
-  });
-}
-
-function renderHub() {
-  const sg = document.getElementById('hub-status-grid');
-  const rb = document.getElementById('hub-risk-badge');
-  if (!sg) return;
-  sg.innerHTML = '';
-
-  const analysis = hubAnalysis();
-
-  PRODUCTS.forEach(p => {
-    const r = analysis.results[p];
-    const isTop2 = analysis.top2.includes(p);
-    let sc, sv;
-    if (r.hub === 0)     { sc = 'var(--stop)';   sv = 'EMPTY'; }
-    else if (r.covers)   { sc = 'var(--good)';   sv = 'OK'; }
-    else                 { sc = 'var(--warn)';   sv = 'LOW'; }
-    const cell = document.createElement('div'); cell.className = 'hub-cell';
-    cell.innerHTML = `<div class="hub-cell-lbl">${p}${isTop2 ? ' ★' : ''}</div>
-      <div class="hub-cell-val" style="color:${sc}">${r.hub}</div>
-      <div class="hub-cell-note" style="color:${sc}">${sv} · need ${r.need > 0 ? r.need : '—'}</div>`;
-    sg.appendChild(cell);
-  });
-
-  if (rb) {
-    const s = analysis.status;
-    const map = {
-      EMPTY:    { bg:'rgba(255,23,68,0.14)',   c:'var(--stop)', t:'HUB: EMPTY ⚠' },
-      'AT RISK':{ bg:'rgba(245,166,35,0.12)', c:'var(--warn)', t:'HUB: AT RISK' },
-      HEALTHY:  { bg:'rgba(0,229,160,0.09)',  c:'var(--good)', t:'HUB: HEALTHY ✓' },
-    };
-    const m = map[s] || map.HEALTHY;
-    rb.textContent = m.t; rb.style.background = m.bg; rb.style.color = m.c; rb.style.borderColor = m.c;
-  }
+  if (current && state.valuation[current]) sel.value = current;
+  document.getElementById('val-save-info').textContent = rounds.length ? `${rounds.length} round(s) stored` : '';
 }
 
 function renderValuation() {
-  const v1 = parseFloat(document.getElementById('val1')?.value) || 0;
-  const v2 = parseFloat(document.getElementById('val2')?.value) || 0;
-  const vc = parseFloat(document.getElementById('valcur')?.value) || 0;
-  const vt = parseFloat(document.getElementById('val-target')?.value) || 0;
-  const te = document.getElementById('val-trend');
-  const se = document.getElementById('val-trend-sub');
-  const card = document.getElementById('val-trend-card');
-  const ge = document.getElementById('val-gap');
-  const base = v2 || v1;
-  if (vc > 0 && base > 0) {
-    const diff = vc - base; const pct = (diff / base * 100).toFixed(1);
-    te.textContent = (diff >= 0 ? '▲ +' : '▼ ') + Math.abs(diff).toLocaleString() + '  (' + Math.abs(pct) + '%)';
-    te.style.color = diff >= 0 ? 'var(--good)' : 'var(--bad)';
-    se.textContent = diff >= 0 ? 'Growing — maintain course' : 'Dropping — check overstock';
-    card.style.borderTopColor = diff >= 0 ? 'var(--good)' : 'var(--bad)';
-  } else if (base > 0) {
-    te.textContent = 'Enter current valuation';
-    te.style.color = 'var(--muted)';
-  }
-  if (vt > 0 && vc > 0 && ge) {
-    const gap = vt - vc;
-    ge.textContent = gap <= 0 ? '✓ Target reached!' : 'Gap: ' + gap.toLocaleString() + ' to go';
-    ge.style.color = gap <= 0 ? 'var(--good)' : 'var(--muted)';
-  }
+  const sel = document.getElementById('val-round-select').value;
+  const disp = document.getElementById('val-display');
+  if (!sel || !state.valuation[sel]) { disp.innerHTML = '<p style="color:var(--text3);font-size:11px">Select a round to view</p>'; return; }
+  const rows = state.valuation[sel];
+  if (!rows || rows.length === 0) { disp.innerHTML = '<p style="color:var(--text3)">No data for this round</p>'; return; }
+  // Build table from rows (array of objects)
+  const keys = Object.keys(rows[0]);
+  let html = '<table class="data-table"><thead><tr>';
+  keys.forEach(k => { html += `<th>${k}</th>`; });
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    html += '<tr>';
+    keys.forEach(k => { html += `<td>${row[k] ?? ''}</td>`; });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  disp.innerHTML = html;
 }
 
-function renderSummary() {
-  // Collect per-region signals: store {product, region, action} tuples
-  const stopItems = [], reduceItems = [], normalItems = [], refillItems = [];
-  const procMore = [], priceRaise = [], priceDecrease = [], priceAvoid = [];
+// ============================================================
+// RECOMMENDATION ENGINE
+// ============================================================
+let lastRec = {};
+
+function computeRecommendations() {
+  const mode = state.planMode;
+  const sf = mode === 'push' ? SAFETY_FACTOR : 1.0;
+  const rem = REPLENISHMENT_DAYS - state.daysSinceRepl;
+  const replSoon = rem <= 1;
+
+  // For each product, compute desired transfer to each warehouse
+  let transfers = {}; // { T01: { '03N': qty, '03S': qty, '03W': qty } }
+  PRODUCTS.forEach(p => {
+    const inv = state.inventory[p.code];
+    const hubStock = inv['03'];
+    transfers[p.code] = {};
+    WAREHOUSES.forEach(w => {
+      const sold = state.sold[p.code][w];
+      const regInv = inv[w];
+      let target, rec;
+      if (mode === 'push') {
+        target = Math.round(sold * sf);
+        rec = Math.max(0, target - regInv);
+      } else {
+        // pull: more conservative, only fill to exact demand
+        target = sold;
+        rec = Math.max(0, target - regInv);
+      }
+      transfers[p.code][w] = rec;
+    });
+  });
+
+  // Hub constraint: per product, check if hub has enough
+  // Priority: highest total demand region first
+  let recResults = {};
+  let anyInsuf = false;
 
   PRODUCTS.forEach(p => {
-    if (totalForecast(p) === 0) return;
+    const inv = state.inventory[p.code];
+    let hubAvail = inv['03'];
+    const rawTransfers = transfers[p.code];
 
-    REGIONS.forEach(r => {
-      const action = regionalAction(p, r);
-      if (!action) return;
-      const label = `${p} (${r})`;
-      if (action === 'STOP')   stopItems.push(label);
-      if (action === 'REDUCE') reduceItems.push(label);
-      if (action === 'SHIP')   normalItems.push(label);
-      if (action === 'REFILL') refillItems.push(label);
+    // Sort warehouses by demand descending
+    const sorted = [...WAREHOUSES].sort((a, b) => state.sold[p.code][b] - state.sold[p.code][a]);
+
+    let allocated = { '03N':0, '03S':0, '03W':0 };
+    let status = 'OK';
+
+    sorted.forEach(w => {
+      const want = rawTransfers[w];
+      if (want <= 0) { allocated[w] = 0; return; }
+      if (hubAvail >= want) {
+        allocated[w] = want;
+        hubAvail -= want;
+      } else if (hubAvail > 0) {
+        allocated[w] = hubAvail;
+        hubAvail = 0;
+        status = 'Hub Low';
+        anyInsuf = true;
+      } else {
+        allocated[w] = 0;
+        status = 'Insufficient Hub Stock';
+        anyInsuf = true;
+      }
     });
 
-    if (calcProcurement(p) > 0) procMore.push(p);
+    if (replSoon && inv['03'] < 200) status = 'Replenishment Due Soon';
 
-    const rec = priceRec(p);
-    const cur = price(p);
-    if (rec.sug > cur) priceRaise.push(p);
-    else if (rec.sug < cur) priceDecrease.push(p);
-    if (rec.adv.includes('do NOT raise')) priceAvoid.push(p);
+    recResults[p.code] = { allocated, status, hubStock: inv['03'] };
   });
 
-  const hubStatus = hubAnalysis().status;
-
-  const fmtItems = (arr, color) => arr.length
-    ? arr.map(label => `<span style="color:${color};font-weight:700">${label}</span>`).join('<br/>')
-    : '<span style="color:var(--muted);font-style:italic">None</span>';
-
-  const fmtProds = (arr, color) => arr.length
-    ? arr.map(p => `<span style="color:${color};font-weight:700">${p}</span>`).join(' · ')
-    : '<span style="color:var(--muted);font-style:italic">None</span>';
-
-  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
-
-  const stopHtml = stopItems.length
-    ? fmtItems(stopItems, 'var(--stop)') + (reduceItems.length ? '<br/>' + fmtItems(reduceItems, 'var(--warn)') : '')
-    : (reduceItems.length ? fmtItems(reduceItems, 'var(--warn)') : '<span style="color:var(--good)">All clear ✓</span>');
-
-  set('sum-stop',     stopHtml);
-  set('sum-normal',   fmtItems(normalItems, 'var(--good)'));
-  set('sum-refill',   fmtItems(refillItems, 'var(--refill)'));
-  set('sum-procure',  procMore.length ? fmtProds(procMore,'var(--warn)') : '<span style="color:var(--good)">Stocked ✓</span>');
-  set('sum-raise',    fmtProds(priceRaise,  'var(--purple)'));
-  set('sum-decrease', fmtProds(priceDecrease,'var(--bad)'));
-  set('sum-avoid',    fmtProds([...new Set(priceAvoid)], 'var(--bad)'));
-
-  const hubMap = { HEALTHY: ['var(--good)','✓ Healthy'], 'AT RISK': ['var(--warn)','⚠ At Risk'], EMPTY: ['var(--stop)','🚨 EMPTY'] };
-  const [hc, ht] = hubMap[hubStatus] || ['var(--muted)', hubStatus];
-  set('sum-hub', `<span style="color:${hc};font-weight:700">${ht}</span>`);
+  lastRec = recResults;
+  renderRecommendations(recResults);
+  document.getElementById('rec-hub-warn').style.display = anyInsuf ? 'block' : 'none';
 }
 
-/* ---------- tooltip on pname ---------- */
-function updateTooltips() {
-  document.querySelectorAll('[data-tip=""]').forEach(el => {
-    const p = el.textContent.trim();
-    if (!PRODUCTS.includes(p)) return;
-    const vel = velocity(p).toFixed(2);
-    const tf = totalForecast(p).toFixed(0);
-    const ti = totalInv(p);
-    const acts = REGIONS.map(r => `${r[0]}:${regionalAction(p,r)||'—'}`).join(' ');
-    el.setAttribute('data-tip',
-      `Forecast: ${tf}  Inv: ${ti}\nVelocity: ${vel}\nActions: ${acts}`);
-  });
+function renderRecommendations(rec) {
+  renderRecTable('rec-tbody', rec);
 }
 
-/* ============================================================
-   SECTION 5: MAIN RECALC ENTRY POINT
-   Read → State → Calculate → Render
-   ============================================================ */
-function recalcAll() {
-  parseInputs();
-  renderSales();
-  renderDemandShare();
-  renderVelocity();
-  renderInventory();
-  renderRegionalActions();
-  renderShipments();
-  renderProcurement();
-  renderTurnover();
-  renderPricing();
-  renderHub();
-  renderValuation();
-  renderSummary();
-  updateTooltips();
-}
+function renderRecTable(tbodyId, rec) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  PRODUCTS.forEach(p => {
+    const r = rec[p.code];
+    if (!r) return;
+    const tr = document.createElement('tr');
+    const statusMap = {
+      'OK': 'badge-ok',
+      'Hub Low': 'badge-low',
+      'Insufficient Hub Stock': 'badge-insuf',
+      'Replenishment Due Soon': 'badge-due',
+    };
+    const badgeCls = statusMap[r.status] || 'badge-hold';
 
-/* ============================================================
-   SECTION 6: EVENT HANDLERS
-   ============================================================ */
-function switchTab(id, btn) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-' + id).classList.add('active');
-  btn.classList.add('active');
-}
-
-function buildChecklist() {
-  const items = [
-    'Enter all regional sales into Sales tab',
-    'Enter previous round sales for weighted forecast',
-    'Enter current warehouse inventory levels',
-    'Enter hub inventory for each product',
-    'Set Sched Days and Sales Window Days in header',
-    'Select planning mode (Push / Pull)',
-    'Click Recalculate to refresh all outputs',
-    'Shipments tab: check for any STOP regions → ship zero',
-    'Shipments tab: note REFILL regions → ship maximum',
-    'Check South warehouse — overstocked? Cut shipments',
-    'Check North warehouse — missing products? Add them',
-    'Hub covers ≥1 cycle for top 2 fast movers?',
-    'Review sell-through — anything below 0.50?',
-    'Procurement tab: any products need ordering?',
-    'Price raise: demand broad + inventory low only',
-    'Read Next Round Actions summary at page bottom',
-    'Save progress (💾 Save button) before closing',
-    'Write round observations in Notes tab',
-  ];
-  const grid = document.getElementById('checklist-grid'); if (!grid) return;
-  grid.innerHTML = '';
-  items.forEach((txt, i) => {
-    const d = document.createElement('div'); d.className = 'chk'; d.id = `chk_${i}`;
-    d.innerHTML = `<div class="chk-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.2 6L8 1" stroke="#000" stroke-width="1.7" stroke-linecap="round"/></svg></div><div class="chk-txt">${txt}</div>`;
-    d.onclick = () => d.classList.toggle('done');
-    grid.appendChild(d);
-  });
-}
-
-function confirmReset() {
-  if (!confirm('Reset all data for this round? Saved localStorage data will also be cleared.')) return;
-  localStorage.removeItem('erp_war_room_v3');
-
-  // Fully reset state object first
-  state = {
-    mode: 'push',
-    scheduleDays: 3,
-    windowDays: 3,
-    round: null,
-    products: {}
-  };
-  initState();
-
-  // Reset header controls to defaults
-  const pm = document.getElementById('planning-mode'); if (pm) pm.value = 'push';
-  const sd = document.getElementById('sched-days');   if (sd) sd.value = 3;
-  const wd = document.getElementById('window-days');  if (wd) wd.value = 3;
-  const ri = document.getElementById('round-input');  if (ri) ri.value = '';
-
-  // Reset all number inputs except the header controls already reset above
-  document.querySelectorAll('input[type="number"]').forEach(el => {
-    if (['sched-days','window-days'].includes(el.id)) return;
-    if (el.id.startsWith('price_')) {
-      const p = PRODUCTS.find(p => K(p) === el.id.replace('price_',''));
-      el.value = p ? DEF_PRICES[p] : '';
-      return;
+    function transferCell(w) {
+      const q = r.allocated[w];
+      if (q > 0) return `<span class="send-val">${q}</span>`;
+      const sold = state.sold[p.code][w];
+      if (sold === 0) return `<span class="hold-val">Hold</span>`;
+      return `<span class="hold-val">0</span>`;
     }
-    el.value = '';
+
+    tr.innerHTML = `
+      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
+      <td style="font-family:var(--mono)">${r.hubStock}</td>
+      <td>${transferCell('03N')}</td>
+      <td>${transferCell('03S')}</td>
+      <td>${transferCell('03W')}</td>
+      <td><span class="badge ${badgeCls}">${r.status}</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ============================================================
+// LIVE VIEW
+// ============================================================
+function renderLive() {
+  // Hub update table
+  const hTbody = document.getElementById('live-hub-tbody');
+  hTbody.innerHTML = '';
+  PRODUCTS.forEach(p => {
+    const inv = state.inventory[p.code];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
+      <td style="font-family:var(--mono)">${inv['03']}</td>
+      <td><input class="editable" type="number" min="0" id="live-hub-${p.code}" style="width:80px"></td>
+    `;
+    hTbody.appendChild(tr);
   });
 
-  document.querySelectorAll('.chk').forEach(c => c.classList.remove('done'));
-  const nm = document.getElementById('notes-main'); if (nm) nm.value = '';
-  const nn = document.getElementById('notes-next'); if (nn) nn.value = '';
+  // Sold table
+  const sTbody = document.getElementById('live-sold-tbody');
+  sTbody.innerHTML = '';
+  PRODUCTS.forEach(p => {
+    const s = state.sold[p.code];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
+      <td><input class="editable" type="number" min="0" id="live-03N-${p.code}" value="${s['03N']}" style="width:65px"></td>
+      <td><input class="editable" type="number" min="0" id="live-03S-${p.code}" value="${s['03S']}" style="width:65px"></td>
+      <td><input class="editable" type="number" min="0" id="live-03W-${p.code}" value="${s['03W']}" style="width:65px"></td>
+    `;
+    sTbody.appendChild(tr);
+  });
 
-  recalcAll();
+  // Hub total
+  let total = 0;
+  PRODUCTS.forEach(p => { total += state.inventory[p.code]['03']; });
+  document.getElementById('live-hub-total').textContent = total;
+  document.getElementById('live-mode-label').textContent = state.planMode.toUpperCase();
+
+  // Recommendations
+  computeRecommendations();
+  renderRecTable('live-rec-tbody', lastRec);
 }
 
-/* ============================================================
-   SECTION 7: DATA PERSISTENCE (localStorage)
-   ============================================================ */
-function saveState() {
-  parseInputs();
-  const data = {
-    mode: state.mode,
-    scheduleDays: state.scheduleDays,
-    windowDays: state.windowDays,
-    round: state.round,
-    products: state.products,
-    valuation: {
-      v1: document.getElementById('val1')?.value,
-      v2: document.getElementById('val2')?.value,
-      vc: document.getElementById('valcur')?.value,
-      vt: document.getElementById('val-target')?.value,
-    },
-    notes: {
-      main: document.getElementById('notes-main')?.value,
-      next: document.getElementById('notes-next')?.value,
-    },
-    checklist: Array.from(document.querySelectorAll('.chk')).map(c => c.classList.contains('done')),
-    savedAt: new Date().toISOString(),
-  };
-  try {
-    localStorage.setItem('erp_war_room_v3', JSON.stringify(data));
-    const btn = document.querySelector('[onclick="saveState()"]');
-    if (btn) { const orig = btn.textContent; btn.textContent = '✓ Saved!'; setTimeout(() => btn.textContent = orig, 1500); }
-  } catch(e) { alert('Could not save: ' + e.message); }
-}
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem('erp_war_room_v3');
-    if (!raw) return;
-    const data = JSON.parse(raw);
-    // restore header
-    if (data.mode) document.getElementById('planning-mode').value = data.mode;
-    if (data.scheduleDays) document.getElementById('sched-days').value = data.scheduleDays;
-    if (data.windowDays)   document.getElementById('window-days').value = data.windowDays;
-    if (data.round)        document.getElementById('round-input').value = data.round;
-    // restore valuation
-    if (data.valuation) {
-      if (data.valuation.v1) document.getElementById('val1').value = data.valuation.v1;
-      if (data.valuation.v2) document.getElementById('val2').value = data.valuation.v2;
-      if (data.valuation.vc) document.getElementById('valcur').value = data.valuation.vc;
-      if (data.valuation.vt) document.getElementById('val-target').value = data.valuation.vt;
+function applyLiveHub() {
+  PRODUCTS.forEach(p => {
+    const val = parseInt(document.getElementById(`live-hub-${p.code}`).value);
+    if (!isNaN(val)) {
+      state.inventory[p.code].prevHub = state.inventory[p.code]['03'];
+      state.inventory[p.code]['03'] = val;
     }
-    // restore products
-    if (data.products) {
-      PRODUCTS.forEach(p => {
-        if (!data.products[p]) return;
-        const k = K(p);
-        const d = data.products[p];
-        REGIONS.forEach(r => {
-          const si = document.getElementById(`s_${k}_${r}`); if (si) si.value = d[`sales${r}`] || '';
-          const pi = document.getElementById(`pv_${k}_${r}`); if (pi) pi.value = d[`prev${r}`] || '';
-          const ii = document.getElementById(`i_${k}_${r}`); if (ii) ii.value = d[`inv${r}`] || '';
+  });
+  renderLive();
+  showToast('Hub inventory updated');
+}
+
+function applyLiveSold() {
+  PRODUCTS.forEach(p => {
+    WAREHOUSES.forEach(w => {
+      const el = document.getElementById(`live-${w}-${p.code}`);
+      if (el) state.sold[p.code][w] = parseInt(el.value) || 0;
+    });
+  });
+  renderLive();
+  showToast('Sold quantities updated (replaced)');
+}
+
+// ============================================================
+// FILE UPLOAD: SOLD REPORT
+// ============================================================
+/*
+  COLUMN MAPPING — adapt this section if your Excel layout changes.
+  Expected columns (case-insensitive):
+    Product / ProductCode / Code   → product code (T01, T02 ...)
+    03N / North / NorthSold        → sold qty for 03N
+    03S / South / SouthSold        → sold qty for 03S
+    03W / West  / WestSold         → sold qty for 03W
+*/
+function uploadSold(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    const reader = new FileReader();
+    reader.onload = e => parseSoldCSV(e.target.result);
+    reader.readAsText(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:0 });
+      processSoldRows(rows);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  input.value = '';
+}
+
+function parseSoldCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  const rows = lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = vals[i]?.trim() || '0'; });
+    return obj;
+  });
+  processSoldRows(rows);
+}
+
+function processSoldRows(rows) {
+  let updated = 0;
+  rows.forEach(row => {
+    // Flexible column matching
+    const code = findCol(row, ['Product','ProductCode','Code','SKU','Item']);
+    if (!code) return;
+    const pCode = code.toUpperCase().trim();
+    if (!state.sold[pCode]) return;
+    const n = parseNum(findCol(row, ['03N','North','NorthSold','N_Sold','RegionN']));
+    const s = parseNum(findCol(row, ['03S','South','SouthSold','S_Sold','RegionS']));
+    const w = parseNum(findCol(row, ['03W','West','WestSold','W_Sold','RegionW']));
+    // REPLACE not accumulate
+    state.sold[pCode]['03N'] = n;
+    state.sold[pCode]['03S'] = s;
+    state.sold[pCode]['03W'] = w;
+    updated++;
+  });
+  if (updated > 0) {
+    renderSold();
+    computeRecommendations();
+    showToast(`Sold report imported — ${updated} product(s) updated (replaced)`);
+  } else {
+    showToast('Could not parse sold report — check column names', true);
+  }
+}
+
+// ============================================================
+// FILE UPLOAD: VALUATION
+// ============================================================
+/*
+  COLUMN MAPPING — adapt this section for your valuation file layout.
+  Expected Excel structure:
+    Column A (or "Round") → Round identifier (e.g. "Round 1", "1", etc.)
+    Remaining columns     → Any valuation data columns (e.g. Product, Value, ...)
+  
+  If each sheet = one round, the sheet name is used as the round key.
+  If a "Round" column exists, rows are grouped by it.
+*/
+function uploadValuation(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+    let added = 0;
+    // Try multi-sheet (each sheet = one round)
+    wb.SheetNames.forEach(sheetName => {
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      if (rows.length === 0) return;
+      // Check if rows have a "Round" column
+      const firstRow = rows[0];
+      const roundCol = Object.keys(firstRow).find(k => /round/i.test(k));
+      if (roundCol) {
+        // Group by round value
+        const grouped = {};
+        rows.forEach(r => {
+          const rKey = `Round ${r[roundCol]}`.replace(/^Round Round /i, 'Round ');
+          if (!grouped[rKey]) grouped[rKey] = [];
+          const rowCopy = { ...r };
+          delete rowCopy[roundCol];
+          grouped[rKey].push(rowCopy);
         });
-        const hi = document.getElementById(`hub_${k}`); if (hi) hi.value = d.hubInventory || '';
-        const pri = document.getElementById(`price_${k}`); if (pri) pri.value = d.price || DEF_PRICES[p];
-      });
-    }
-    // notes
-    if (data.notes) {
-      const nm = document.getElementById('notes-main'); if (nm) nm.value = data.notes.main || '';
-      const nn = document.getElementById('notes-next'); if (nn) nn.value = data.notes.next || '';
-    }
-    // checklist
-    if (data.checklist) {
-      data.checklist.forEach((done, i) => {
-        const c = document.getElementById(`chk_${i}`);
-        if (c && done) c.classList.add('done');
-      });
-    }
-  } catch(e) { console.warn('Could not load saved state:', e); }
-}
-
-/* ============================================================
-   SECTION 8: EXPORT — uses calculation engine (not DOM re-reads)
-   ============================================================ */
-function exportSummary() {
-  parseInputs();
-  let txt = 'ERP WAR ROOM v3 — ROUND SUMMARY\n';
-  txt += '==================================\n';
-  txt += `Round: ${state.round || '?'} · Mode: ${state.mode.toUpperCase()} · Sched: ${state.scheduleDays}d · Window: ${state.windowDays}d\n\n`;
-
-  txt += 'SALES & FORECASTS:\n';
-  PRODUCTS.forEach(p => {
-    const ts = totalSales(p); if (!ts) return;
-    txt += `  ${p}: Sales N=${sales(p,'North')} S=${sales(p,'South')} W=${sales(p,'West')} | Forecast N=${forecast(p,'North').toFixed(0)} S=${forecast(p,'South').toFixed(0)} W=${forecast(p,'West').toFixed(0)}\n`;
-  });
-
-  txt += '\nSHIPMENTS [calcShipment engine]:\n';
-  PRODUCTS.forEach(p => {
-    if (!totalForecast(p)) return;
-    REGIONS.forEach(r => {
-      const ship = calcShipment(p, r);
-      const action = regionalAction(p, r);
-      txt += `  ${p} → ${r}: ${ship} (${action || '—'})\n`;
+        Object.entries(grouped).forEach(([rKey, rRows]) => {
+          state.valuation[rKey] = rRows; // replace if exists
+          added++;
+        });
+      } else {
+        // Use sheet name as round
+        const rKey = sheetName.match(/^\d+$/) ? `Round ${sheetName}` : sheetName;
+        state.valuation[rKey] = rows;
+        added++;
+      }
     });
-  });
-
-  txt += '\nPROCUREMENT:\n';
-  PRODUCTS.forEach(p => {
-    const proc = calcProcurement(p);
-    if (totalForecast(p) > 0) txt += `  ${p}: ${proc}\n`;
-  });
-
-  txt += '\nACTION FLAGS:\n';
-  PRODUCTS.forEach(p => {
-    if (!totalForecast(p)) return;
-    const acts = REGIONS.map(r => `${r}: ${regionalAction(p,r)||'—'}`).join(' · ');
-    txt += `  ${p}: ${acts}\n`;
-  });
-
-  txt += '\nNOTES:\n' + (document.getElementById('notes-main')?.value || '(none)') + '\n';
-  txt += '\nNEXT ROUND PLAN:\n' + (document.getElementById('notes-next')?.value || '(none)');
-
-  const blob = new Blob([txt], { type: 'text/plain' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `erp_round_${state.round || 'X'}_summary.txt`; a.click();
+    renderValuationDropdown();
+    showToast(`Valuation imported — ${added} round(s) stored/updated`);
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
 }
 
-/* ============================================================
-   INIT
-   ============================================================ */
-buildInputTables();
-buildChecklist();
-loadState();
-recalcAll();
+// ============================================================
+// FILE UPLOAD: HUB INVENTORY
+// ============================================================
+/*
+  COLUMN MAPPING:
+    Product / Code / SKU  → product code
+    Hub / 03 / HubStock   → hub quantity
+    03N / North           → 03N qty (optional)
+    03S / South           → 03S qty (optional)
+    03W / West            → 03W qty (optional)
+*/
+function uploadHubInventory(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval:0 });
+    let updated = 0;
+    rows.forEach(row => {
+      const code = findCol(row, ['Product','ProductCode','Code','SKU']);
+      if (!code) return;
+      const pCode = code.toString().toUpperCase().trim();
+      if (!state.inventory[pCode]) return;
+      state.inventory[pCode].prevHub = state.inventory[pCode]['03'];
+      const hub = parseNum(findCol(row, ['Hub','03','HubStock','MainHub','Main']));
+      state.inventory[pCode]['03'] = hub;
+      const n = row['03N'] ?? row['North'] ?? null;
+      const s = row['03S'] ?? row['South'] ?? null;
+      const w = row['03W'] ?? row['West'] ?? null;
+      if (n !== null) state.inventory[pCode]['03N'] = parseNum(n);
+      if (s !== null) state.inventory[pCode]['03S'] = parseNum(s);
+      if (w !== null) state.inventory[pCode]['03W'] = parseNum(w);
+      updated++;
+    });
+    if (updated > 0) {
+      renderInventory();
+      computeRecommendations();
+      showToast(`Hub inventory imported — ${updated} product(s) updated`);
+    } else {
+      showToast('Could not parse hub file — check column names', true);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function findCol(row, candidates) {
+  for (const c of candidates) {
+    if (row[c] !== undefined && row[c] !== '') return row[c];
+    // case-insensitive search
+    const k = Object.keys(row).find(key => key.toLowerCase() === c.toLowerCase());
+    if (k && row[k] !== undefined && row[k] !== '') return row[k];
+  }
+  return null;
+}
+
+function parseNum(v) {
+  if (v === null || v === undefined) return 0;
+  const n = parseFloat(String(v).replace(/[^0-9.-]/g,''));
+  return isNaN(n) ? 0 : Math.round(n);
+}
+
+function timeNow() {
+  return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+}
+
+let toastTimer;
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = isError ? 'error' : '';
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2800);
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll() {
+  renderInventory();
+  renderSold();
+  renderReplenishment();
+  renderValuationDropdown();
+  renderValuation();
+  computeRecommendations();
+  setPlanMode(state.planMode);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+initState();
+loadAll();
+renderAll();
 </script>
 </body>
 </html>
