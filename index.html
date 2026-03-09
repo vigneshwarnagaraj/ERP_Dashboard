@@ -467,6 +467,17 @@
     transition: all 0.15s;
   }
   .apply-btn:hover { background: var(--accent2); color: #fff; }
+  .apply-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    background: rgba(122,130,158,0.12);
+    color: var(--text3);
+    border-color: var(--border2);
+  }
+  .apply-btn:disabled:hover {
+    background: rgba(122,130,158,0.12);
+    color: var(--text3);
+  }
 
   .info-chip {
     display: inline-flex;
@@ -608,6 +619,10 @@
         <span class="days-label">Days since last replenishment:</span>
         <input class="days-input" type="number" min="0" max="10" id="days-input" value="0" oninput="updateDaysStatus()">
         <span class="days-status" id="days-status"></span>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="apply-btn" id="post-repl-btn" onclick="postReplenishment()" disabled>Post Replenishment</button>
+        <span class="save-indicator" id="repl-save-time"></span>
       </div>
     </div>
   </div>
@@ -976,17 +991,46 @@ function updateDaysStatus() {
   state.daysSinceRepl = d;
   const rem = REPLENISHMENT_DAYS - d;
   const el = document.getElementById('days-status');
+  const btn = document.getElementById('post-repl-btn');
+
   if (rem <= 0) {
     el.textContent = '⚡ Replenishment overdue or due now';
     el.style.color = 'var(--red)';
+    if (btn) btn.disabled = false;
   } else if (rem === 1) {
-    el.textContent = `Due tomorrow`;
+    el.textContent = 'Due tomorrow';
     el.style.color = 'var(--orange)';
+    if (btn) btn.disabled = true;
   } else {
     el.textContent = `${rem} day(s) until next replenishment`;
     el.style.color = 'var(--green)';
+    if (btn) btn.disabled = true;
   }
   computeRecommendations();
+}
+
+function postReplenishment() {
+  if (state.daysSinceRepl < REPLENISHMENT_DAYS) {
+    showToast(`Replenishment not due yet. ${REPLENISHMENT_DAYS - state.daysSinceRepl} day(s) remaining.`, true);
+    return;
+  }
+  // Preserve prevHub for delta, then add fixed replenishment quantities
+  PRODUCTS.forEach(p => {
+    state.inventory[p.code].prevHub = state.inventory[p.code]['03'];
+    state.inventory[p.code]['03'] += REPLENISHMENT[p.code] || 0;
+  });
+  // Reset cycle counter
+  state.daysSinceRepl = 0;
+  const daysInput = document.getElementById('days-input');
+  if (daysInput) daysInput.value = 0;
+  // Update posted timestamp
+  const replSave = document.getElementById('repl-save-time');
+  if (replSave) replSave.textContent = 'Posted ' + timeNow();
+  // Refresh UI
+  renderInventory();
+  renderReplenishment();
+  computeRecommendations();
+  showToast('Replenishment posted to hub 03');
 }
 
 // ============================================================
