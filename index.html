@@ -559,7 +559,7 @@
         <button class="apply-btn" onclick="applyInventory()">Apply Inventory Updates</button>
         <span class="save-indicator" id="inv-save-time"></span>
         <div class="file-btn">
-          <button class="btn" style="font-size:11px;padding:4px 10px;">▲ Hub Inventory File</button>
+          <button class="btn" style="font-size:11px;padding:4px 10px;">▲ Inventory Report</button>
           <input type="file" accept=".xlsx,.xls,.csv" onchange="uploadHubInventory(this)">
         </div>
       </div>
@@ -1217,69 +1217,71 @@ function applyLiveSold() {
 // FILE UPLOAD: SOLD REPORT
 // ============================================================
 /*
-  COLUMN MAPPING — adapt this section if your Excel layout changes.
-  Expected columns (case-insensitive):
-    Product / ProductCode / Code   → product code (T01, T02 ...)
-    03N / North / NorthSold        → sold qty for 03N
-    03S / South / SouthSold        → sold qty for 03S
-    03W / West  / WestSold         → sold qty for 03W
+  COLUMN MAPPING — row-based SAP/ERP export format:
+    Area / Region / Location       → warehouse region (North → 03N, South → 03S, West → 03W)
+    Material Number / Material /
+      Product / Code / SKU         → product code (BB-T01 → T01, etc.)
+    Quantity / Qty / Sold Qty /
+      Sales Qty                    → sold quantity (may contain "ST" unit suffix)
+
+  Each row is one product-region pair.
+  A fresh upload RESETS all sold values first, then fills from the file.
 */
 function uploadSold(input) {
   const file = input.files[0];
   if (!file) return;
-  const ext = file.name.split('.').pop().toLowerCase();
-  if (ext === 'csv') {
-    const reader = new FileReader();
-    reader.onload = e => parseSoldCSV(e.target.result);
-    reader.readAsText(file);
-  } else {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval:0 });
-      processSoldRows(rows);
-    };
-    reader.readAsArrayBuffer(file);
-  }
+  // Route ALL file types through XLSX for safe parsing (handles CSV, XLS, XLSX)
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    console.log('Sold rows sample:', rows.slice(0, 5));
+    processSoldRows(rows);
+  };
+  reader.readAsArrayBuffer(file);
   input.value = '';
 }
 
-function parseSoldCSV(text) {
-  const lines = text.trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const vals = line.split(',');
-    const obj = {};
-    headers.forEach((h, i) => { obj[h] = vals[i]?.trim() || '0'; });
-    return obj;
-  });
-  processSoldRows(rows);
-}
-
 function processSoldRows(rows) {
+  // Reset all sold values before applying fresh report (replace, not accumulate)
+  PRODUCTS.forEach(p => {
+    state.sold[p.code]['03N'] = 0;
+    state.sold[p.code]['03S'] = 0;
+    state.sold[p.code]['03W'] = 0;
+  });
+
   let updated = 0;
+
   rows.forEach(row => {
-    // Flexible column matching
-    const code = findCol(row, ['Product','ProductCode','Code','SKU','Item']);
-    if (!code) return;
-    const pCode = code.toUpperCase().trim();
-    if (!state.sold[pCode]) return;
-    const n = parseNum(findCol(row, ['03N','North','NorthSold','N_Sold','RegionN']));
-    const s = parseNum(findCol(row, ['03S','South','SouthSold','S_Sold','RegionS']));
-    const w = parseNum(findCol(row, ['03W','West','WestSold','W_Sold','RegionW']));
-    // REPLACE not accumulate
-    state.sold[pCode]['03N'] = n;
-    state.sold[pCode]['03S'] = s;
-    state.sold[pCode]['03W'] = w;
+    const areaRaw     = findCol(row, ['Area', 'Region', 'Location']);
+    const materialRaw = findCol(row, ['Material Number', 'Material', 'Product', 'Code', 'SKU']);
+    const qtyRaw      = findCol(row, ['Quantity', 'Qty', 'Sold Qty', 'Sales Qty']);
+
+    if (!areaRaw || !materialRaw) return;
+
+    const area     = String(areaRaw).trim().toUpperCase();
+    const material = String(materialRaw).trim().toUpperCase();
+
+    // Accept BB-T01 style codes or bare T01 style codes
+    const match = material.match(/T0[1-6]/);
+    if (!match) return;
+    const productCode = match[0]; // e.g. "T01"
+
+    const areaMap = { NORTH: '03N', SOUTH: '03S', WEST: '03W' };
+    const wh = areaMap[area];
+    if (!wh || !state.sold[productCode]) return;
+
+    state.sold[productCode][wh] = parseNum(qtyRaw);
     updated++;
   });
+
   if (updated > 0) {
     renderSold();
     computeRecommendations();
-    showToast(`Sold report imported — ${updated} product(s) updated (replaced)`);
+    showToast(`Sold report imported — ${updated} row(s) processed`);
   } else {
-    showToast('Could not parse sold report — check column names', true);
+    showToast('Could not parse sold report — check Area / Material Number / Quantity columns', true);
   }
 }
 
@@ -1339,51 +1341,74 @@ function uploadValuation(input) {
 }
 
 // ============================================================
-// FILE UPLOAD: HUB INVENTORY
+// FILE UPLOAD: INVENTORY REPORT
 // ============================================================
 /*
-  COLUMN MAPPING:
-    Product / Code / SKU  → product code
-    Hub / 03 / HubStock   → hub quantity
-    03N / North           → 03N qty (optional)
-    03S / South           → 03S qty (optional)
-    03W / West            → 03W qty (optional)
+  COLUMN MAPPING — row-based SAP/ERP export format:
+    Location / Warehouse / Area    → warehouse code (03, 03N, 03S, 03W)
+    Material / Material Number /
+      Product / Code / SKU         → product code (BB-T01 → T01, etc.)
+    Stock / Qty / Quantity /
+      Available Stock              → stock quantity (may contain "ST" unit suffix)
+
+  Each row is one product-location pair.
+  Rows with locations other than 03, 03N, 03S, 03W are ignored.
+  Hub (03) updates store prevHub before replacing.
 */
 function uploadHubInventory(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval:0 });
-    let updated = 0;
-    rows.forEach(row => {
-      const code = findCol(row, ['Product','ProductCode','Code','SKU']);
-      if (!code) return;
-      const pCode = code.toString().toUpperCase().trim();
-      if (!state.inventory[pCode]) return;
-      state.inventory[pCode].prevHub = state.inventory[pCode]['03'];
-      const hub = parseNum(findCol(row, ['Hub','03','HubStock','MainHub','Main']));
-      state.inventory[pCode]['03'] = hub;
-      const n = row['03N'] ?? row['North'] ?? null;
-      const s = row['03S'] ?? row['South'] ?? null;
-      const w = row['03W'] ?? row['West'] ?? null;
-      if (n !== null) state.inventory[pCode]['03N'] = parseNum(n);
-      if (s !== null) state.inventory[pCode]['03S'] = parseNum(s);
-      if (w !== null) state.inventory[pCode]['03W'] = parseNum(w);
-      updated++;
-    });
-    if (updated > 0) {
-      renderInventory();
-      computeRecommendations();
-      showToast(`Hub inventory imported — ${updated} product(s) updated`);
-    } else {
-      showToast('Could not parse hub file — check column names', true);
-    }
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    console.log('Inventory rows sample:', rows.slice(0, 5));
+    processInventoryRows(rows);
   };
   reader.readAsArrayBuffer(file);
   input.value = '';
+}
+
+function processInventoryRows(rows) {
+  let updated = 0;
+
+  rows.forEach(row => {
+    const locationRaw = findCol(row, ['Location', 'Warehouse', 'Area']);
+    const materialRaw = findCol(row, ['Material', 'Material Number', 'Product', 'Code', 'SKU']);
+    const stockRaw    = findCol(row, ['Stock', 'Qty', 'Quantity', 'Available Stock']);
+
+    if (!locationRaw || !materialRaw) return;
+
+    const location = String(locationRaw).trim().toUpperCase();
+    const material  = String(materialRaw).trim().toUpperCase();
+
+    // Accept BB-T01 style codes or bare T01 style codes
+    const match = material.match(/T0[1-6]/);
+    if (!match) return;
+    const productCode = match[0]; // e.g. "T01"
+
+    if (!['03', '03N', '03S', '03W'].includes(location)) return;
+    if (!state.inventory[productCode]) return;
+
+    const stock = parseNum(stockRaw);
+
+    if (location === '03') {
+      // Preserve previous hub value for delta calculation
+      state.inventory[productCode].prevHub = state.inventory[productCode]['03'];
+    }
+
+    state.inventory[productCode][location] = stock;
+    updated++;
+  });
+
+  if (updated > 0) {
+    renderInventory();
+    computeRecommendations();
+    showToast(`Inventory report imported — ${updated} row(s) processed`);
+  } else {
+    showToast('Could not parse inventory report — check Location / Material / Stock columns', true);
+  }
 }
 
 // ============================================================
@@ -1401,7 +1426,9 @@ function findCol(row, candidates) {
 
 function parseNum(v) {
   if (v === null || v === undefined) return 0;
-  const n = parseFloat(String(v).replace(/[^0-9.-]/g,''));
+  // Strip unit suffixes like "ST", "EA", commas, then parse
+  const cleaned = String(v).replace(/[A-Z]+$/gi, '').replace(/,/g, '').trim();
+  const n = parseFloat(cleaned);
   return isNaN(n) ? 0 : Math.round(n);
 }
 
