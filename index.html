@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ERP Tool 1 — Transfer Recommender</title>
-<!-- SheetJS for Excel parsing -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -27,10 +26,9 @@
   --grn2:   #34d399;
   --yellow: #f59e0b;
   --red:    #ef4444;
-  --orange: #f97316;
   --mono:   'Space Mono', monospace;
   --body:   'DM Sans', sans-serif;
-  --r: 6px;
+  --r:      6px;
 }
 
 * { scrollbar-width: thin; scrollbar-color: var(--bord2) var(--bg); }
@@ -39,20 +37,16 @@
 ::-webkit-scrollbar-thumb { background: var(--bord2); border-radius: 3px; }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--body);
-  font-size: 13px;
-  line-height: 1.6;
-  min-height: 100vh;
+  background: var(--bg); color: var(--text);
+  font-family: var(--body); font-size: 13px;
+  line-height: 1.6; min-height: 100vh;
 }
 
 /* ── HEADER ── */
 header {
   display: flex; align-items: center; gap: 14px;
   padding: 0 20px; height: 50px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  background: var(--panel); border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 200;
 }
 .hbadge {
@@ -60,132 +54,117 @@ header {
   background: #0f1e40; border: 1px solid #2040a0;
   color: var(--hi2); padding: 3px 10px; border-radius: 3px; letter-spacing: .1em;
 }
-.htitle { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
+.htitle { font-family: var(--mono); font-size: 13px; font-weight: 700; }
 .hright { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 #valDisplay {
   font-family: var(--mono); font-size: 11px;
   padding: 4px 14px; border-radius: 3px;
   border: 1px solid var(--bord2); background: var(--panel2);
-  color: var(--text2); min-width: 200px; text-align: center;
+  color: var(--text2); min-width: 210px; text-align: center;
 }
 
 /* ── LAYOUT ── */
 .layout {
-  display: grid;
-  grid-template-columns: 270px 1fr;
+  display: grid; grid-template-columns: 272px 1fr;
   min-height: calc(100vh - 50px);
 }
 
 /* ── SIDEBAR ── */
 .sidebar {
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
-  padding: 14px;
-  display: flex; flex-direction: column; gap: 12px;
-  overflow-y: auto;
-  max-height: calc(100vh - 50px);
+  background: var(--bg2); border-right: 1px solid var(--border);
+  padding: 14px; display: flex; flex-direction: column; gap: 12px;
+  overflow-y: auto; max-height: calc(100vh - 50px);
 }
-.sb-section {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--r); overflow: hidden;
-}
-.sb-head {
+.sb-sec { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.sb-hd {
   font-family: var(--mono); font-size: 9px; font-weight: 700;
   letter-spacing: .14em; text-transform: uppercase;
   color: var(--text3); background: var(--panel2);
   padding: 7px 12px; border-bottom: 1px solid var(--border);
 }
-.sb-body { padding: 12px; }
+.sb-bd { padding: 12px; }
 
 /* Mode toggle */
-.mode-toggle { display: flex; border: 1px solid var(--bord2); border-radius: 5px; overflow: hidden; }
-.mode-btn {
-  flex: 1; text-align: center; padding: 8px 0;
+.mode-wrap { display: flex; border: 1px solid var(--bord2); border-radius: 5px; overflow: hidden; }
+.mbtn {
+  flex: 1; padding: 8px 0; text-align: center;
   font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .06em;
   cursor: pointer; color: var(--text3); background: var(--panel2); border: none; transition: all .15s;
 }
-.mode-btn.active { background: var(--hi); color: #fff; }
+.mbtn.on { background: var(--hi); color: #fff; }
 #modeDesc { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 8px; line-height: 1.7; }
 
 /* Upload buttons */
-.upload-btn {
-  width: 100%; margin-bottom: 6px;
+.upbtn {
+  width: 100%; margin-bottom: 5px;
   display: flex; align-items: center; gap: 8px;
-  padding: 9px 12px;
-  background: var(--panel2); border: 1px solid var(--border);
+  padding: 9px 12px; background: var(--panel2); border: 1px solid var(--border);
   border-radius: 5px; color: var(--text2);
   font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .06em;
-  cursor: pointer; transition: all .15s;
-  position: relative; overflow: hidden;
+  cursor: pointer; transition: all .15s; position: relative; overflow: hidden;
 }
-.upload-btn:hover { border-color: var(--hi); color: var(--hi2); }
-.upload-btn.loaded { border-color: var(--green); color: var(--grn2); background: #061f13; }
-.upload-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
-.upload-btn .icon { font-size: 14px; flex-shrink: 0; }
-.upload-hint {
+.upbtn:hover { border-color: var(--hi); color: var(--hi2); }
+.upbtn.ok    { border-color: var(--green); color: var(--grn2); background: #061f13; }
+.upbtn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0; }
+.upbtn .ico { font-size: 14px; flex-shrink: 0; }
+.uphint {
   font-family: var(--mono); font-size: 9px; color: var(--text3);
-  margin-top: -2px; margin-bottom: 8px; padding-left: 4px; line-height: 1.6;
+  margin-top: -2px; margin-bottom: 8px; padding-left: 4px; line-height: 1.7;
 }
-.upload-hint.ok { color: var(--green); }
+.uphint.ok { color: var(--green); }
 
 /* Mini form */
-.mini-form { display: flex; flex-direction: column; gap: 6px; }
-.mini-form input, .mini-form select {
-  background: var(--bg); border: 1px solid var(--border);
-  color: var(--text); font-family: var(--mono); font-size: 11px;
-  padding: 6px 8px; border-radius: 4px; outline: none; width: 100%;
+.mform { display: flex; flex-direction: column; gap: 6px; }
+.mform input, .mform select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--mono); font-size: 11px; padding: 6px 8px;
+  border-radius: 4px; outline: none; width: 100%;
 }
-.mini-form input:focus, .mini-form select:focus { border-color: var(--hi); }
-.mini-form select option { background: var(--panel2); }
-.inv-entries { margin-top: 6px; max-height: 120px; overflow-y: auto; }
-.inv-entry-row {
+.mform input:focus, .mform select:focus { border-color: var(--hi); }
+.mform select option { background: var(--panel2); }
+.inv-list { margin-top: 6px; max-height: 120px; overflow-y: auto; }
+.inv-row {
   display: flex; justify-content: space-between; align-items: center;
   font-family: var(--mono); font-size: 10px; color: var(--text2);
   padding: 3px 0; border-bottom: 1px solid var(--border);
 }
-.inv-entry-row:last-child { border-bottom: none; }
-.inv-del { color: var(--red); cursor: pointer; font-size: 13px; background: none; border: none; padding: 0 2px; line-height: 1; }
+.inv-row:last-child { border-bottom: none; }
+.inv-del { color: var(--red); cursor: pointer; font-size: 13px; background: none; border: none; line-height: 1; }
 
 /* Buttons */
-.gen-btn {
+.genbtn {
   width: 100%; padding: 11px;
   background: var(--hi); color: #fff;
-  font-family: var(--mono); font-size: 12px; font-weight: 700;
-  letter-spacing: .08em; border: none; border-radius: 6px;
-  cursor: pointer; transition: all .2s; text-transform: uppercase;
+  font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .08em;
+  border: none; border-radius: 6px; cursor: pointer; transition: all .2s; text-transform: uppercase;
 }
-.gen-btn:hover { background: var(--hi2); transform: translateY(-1px); }
-.gen-btn:active { transform: none; }
-.sample-btn {
+.genbtn:hover { background: var(--hi2); transform: translateY(-1px); }
+.genbtn:active { transform: none; }
+.sampbtn {
   width: 100%; padding: 8px;
   background: var(--panel2); color: var(--text2);
-  font-family: var(--mono); font-size: 10px; font-weight: 700;
-  letter-spacing: .06em; border: 1px solid var(--border); border-radius: 5px;
-  cursor: pointer; transition: all .15s;
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  border: 1px solid var(--border); border-radius: 5px; cursor: pointer; transition: all .15s;
 }
-.sample-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+.sampbtn:hover { border-color: var(--yellow); color: var(--yellow); }
 
-/* Advanced toggle */
+/* Advanced settings */
 .adv-toggle {
   font-family: var(--mono); font-size: 9px; color: var(--text3);
   cursor: pointer; text-align: center; letter-spacing: .08em;
-  padding: 6px; border-radius: 4px; transition: color .15s; user-select: none;
+  padding: 5px; border-radius: 4px; transition: color .15s; user-select: none;
 }
 .adv-toggle:hover { color: var(--text2); }
-.adv-panel { display: none; }
-.adv-panel.open { display: block; }
-.adv-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.adv-field label {
-  display: block; font-family: var(--mono); font-size: 9px;
-  color: var(--text3); margin-bottom: 3px; letter-spacing: .05em;
+.adv-body { display: none; }
+.adv-body.open { display: block; }
+.adv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.adv-f label { display: block; font-family: var(--mono); font-size: 9px; color: var(--text3); margin-bottom: 3px; }
+.adv-f input {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--mono); font-size: 11px; padding: 5px 8px;
+  border-radius: 4px; outline: none; width: 100%;
 }
-.adv-field input {
-  background: var(--bg); border: 1px solid var(--border);
-  color: var(--text); font-family: var(--mono); font-size: 11px;
-  padding: 5px 8px; border-radius: 4px; outline: none; width: 100%;
-}
-.adv-field input:focus { border-color: var(--hi); }
+.adv-f input:focus { border-color: var(--hi); }
 
 /* ── MAIN CONTENT ── */
 .content {
@@ -194,36 +173,46 @@ header {
   max-height: calc(100vh - 50px);
 }
 
-/* Status bar */
-.status-bar { display: flex; gap: 8px; flex-wrap: wrap; }
-.stat-pill {
+/* Animations */
+@keyframes fadeUp { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:none; } }
+.anim { animation: fadeUp .22s ease both; }
+
+/* Alert banner */
+.alert {
+  background: #1a0808; border: 1px solid var(--red); border-radius: var(--r);
+  padding: 10px 16px; font-family: var(--mono); font-size: 11px;
+  color: var(--red); font-weight: 700; letter-spacing: .04em; line-height: 1.8;
+}
+.alert.warn {
+  background: #1a1000; border-color: var(--yellow); color: var(--yellow);
+}
+
+/* Summary grid */
+.sum-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.sum-card {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 14px 16px;
+}
+.sum-lbl { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+.sum-val { font-family: var(--mono); font-size: 20px; font-weight: 700; }
+.sum-sub { font-family: var(--mono); font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+/* Status pills */
+.pill-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
   display: flex; align-items: center; gap: 6px;
   background: var(--panel); border: 1px solid var(--border);
   border-radius: 20px; padding: 4px 14px;
   font-family: var(--mono); font-size: 10px;
 }
-.stat-pill .lbl { color: var(--text3); }
-.stat-pill .val { color: var(--text); font-weight: 700; }
-.stat-pill.blue   { border-color: #1a3060; background: #050f22; }
-.stat-pill.blue .val { color: var(--hi2); }
-.stat-pill.green  { border-color: #1a5c3a; background: #061a10; }
-.stat-pill.green .val { color: var(--grn2); }
-.stat-pill.yellow { border-color: #5c3d0a; background: #1a110a; }
-.stat-pill.yellow .val { color: var(--yellow); }
-.stat-pill.red    { border-color: #5c1a1a; background: #1a0a0a; }
-.stat-pill.red .val { color: var(--red); }
-
-/* Summary card */
-.summary-grid {
-  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
-}
-.sum-card {
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 14px 16px;
-}
-.sum-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
-.sum-val { font-family: var(--mono); font-size: 20px; font-weight: 700; }
-.sum-sub { font-family: var(--mono); font-size: 9px; color: var(--text3); margin-top: 2px; }
+.pill .lbl { color: var(--text3); }
+.pill .val { color: var(--text); font-weight: 700; }
+.pill.blue   { border-color: #1a3060; background: #050f22; }
+.pill.blue .val { color: var(--hi2); }
+.pill.yellow { border-color: #5c3d0a; background: #1a110a; }
+.pill.yellow .val { color: var(--yellow); }
+.pill.red    { border-color: #5c1a1a; background: #1a0a0a; }
+.pill.red .val { color: var(--red); }
 
 /* Valuation card */
 .val-card {
@@ -231,43 +220,33 @@ header {
   border-radius: var(--r); padding: 14px 18px;
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
 }
-.val-item { display: flex; flex-direction: column; gap: 2px; }
-.val-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; }
-.val-num { font-family: var(--mono); font-size: 18px; font-weight: 700; }
-.val-trend {
-  display: flex; align-items: center; gap: 6px;
-  font-family: var(--mono); font-size: 11px;
-  padding: 4px 12px; border-radius: 4px; font-weight: 700;
+.vi { display: flex; flex-direction: column; gap: 2px; }
+.vlbl { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; }
+.vnum { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+.vtrend {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  padding: 4px 12px; border-radius: 4px;
 }
-.trend-up   { background: #061a10; border: 1px solid #1a5c3a; color: var(--grn2); }
-.trend-down { background: #1a0a0a; border: 1px solid #5c1a1a; color: var(--red); }
-.trend-flat { background: var(--panel2); border: 1px solid var(--bord2); color: var(--text3); }
-.val-warn {
+.vt-up   { background: #061a10; border: 1px solid #1a5c3a; color: var(--grn2); }
+.vt-down { background: #1a0a0a; border: 1px solid #5c1a1a; color: var(--red); }
+.vt-flat { background: var(--panel2); border: 1px solid var(--bord2); color: var(--text3); }
+.vwarn {
   background: #2a1800; border: 1px solid #7a4400; color: var(--yellow);
   border-radius: 4px; padding: 4px 12px;
-  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
 }
 
-/* Alert banner */
-.alert-banner {
-  background: #1a0a0a; border: 1px solid var(--red);
-  border-radius: var(--r); padding: 10px 16px;
-  font-family: var(--mono); font-size: 11px; color: var(--red);
-  font-weight: 700; letter-spacing: .04em;
-}
-
-/* Card */
+/* Cards and tables */
 .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-.card-head {
+.card-hd {
   background: var(--panel2); border-bottom: 1px solid var(--border);
   padding: 9px 16px; display: flex; align-items: center; gap: 8px;
   font-family: var(--mono); font-size: 10px; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase; color: var(--text2);
 }
-.card-head .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hi); }
-.card-body { overflow-x: auto; }
+.card-hd .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hi); flex-shrink: 0; }
+.card-bd { overflow-x: auto; }
 
-/* Tables */
 table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
 thead th {
   background: var(--panel2); color: var(--text3); font-weight: 700;
@@ -275,7 +254,7 @@ thead th {
   padding: 7px 12px; border-bottom: 1px solid var(--border);
   white-space: nowrap; text-align: left;
 }
-th.num, td.num { text-align: right; }
+th.r, td.r { text-align: right; }
 tbody td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: #ffffff06; }
@@ -284,25 +263,20 @@ tr.row-warn td { background: #2a180055 !important; }
 tr.row-ok   td { background: #061a1033 !important; }
 
 /* Badges */
-.badge {
-  display: inline-block; font-family: var(--mono); font-size: 9px;
-  font-weight: 700; letter-spacing: .07em; padding: 3px 8px; border-radius: 3px;
-}
-.b-transfer   { background: #0a1f3a; color: var(--hi2);  border: 1px solid #1a4080; }
-.b-sufficient { background: #061a10; color: var(--grn2); border: 1px solid #1a5c3a; }
-.b-partial    { background: #2a1800; color: var(--yellow);border: 1px solid #7a4400; }
-.b-low        { background: #1a0a0a; color: var(--red);   border: 1px solid #5c1a1a; }
+.badge { display: inline-block; font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .07em; padding: 3px 8px; border-radius: 3px; }
+.b-tf { background: #0a1f3a; color: var(--hi2);   border: 1px solid #1a4080; }
+.b-ok { background: #061a10; color: var(--grn2); border: 1px solid #1a5c3a; }
+.b-pa { background: #2a1800; color: var(--yellow);border: 1px solid #7a4400; }
+.b-lw { background: #1a0a0a; color: var(--red);   border: 1px solid #5c1a1a; }
 
 /* Health dot */
-.hdot {
-  display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
-}
+.hdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
 .hg { background: var(--grn2); box-shadow: 0 0 5px var(--green); }
 .hy { background: var(--yellow); box-shadow: 0 0 5px var(--yellow); }
-.hr { background: var(--red);    box-shadow: 0 0 5px var(--red); }
+.hr { background: var(--red); box-shadow: 0 0 5px var(--red); }
 
-.xfer-val  { color: var(--grn2); font-weight: 700; }
-.xfer-zero { color: var(--text3); }
+.xv { color: var(--grn2); font-weight: 700; }   /* transfer value — green */
+.xz { color: var(--text3); }                     /* zero / dash */
 
 /* Cost footer */
 .cost-bar {
@@ -313,113 +287,100 @@ tr.row-ok   td { background: #061a1033 !important; }
 .cost-bar .cv { color: var(--yellow); font-weight: 700; font-size: 12px; }
 .cost-bar .sep { color: var(--text3); }
 
-/* Two-col layout */
+/* Two-col */
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
 /* Debug panel */
-.debug-panel {
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--r); overflow: hidden;
-}
-.debug-head {
+.dbg { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.dbg-hd {
   display: flex; align-items: center; justify-content: space-between;
   padding: 8px 14px; background: var(--panel2); border-bottom: 1px solid var(--border);
   font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .12em;
-  color: var(--text3); text-transform: uppercase; cursor: pointer;
+  color: var(--text3); text-transform: uppercase; cursor: pointer; user-select: none;
 }
-.debug-body { padding: 12px; display: none; }
-.debug-body.open { display: block; }
-.debug-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
-.debug-item {
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: 4px; padding: 8px 10px;
-  font-family: var(--mono); font-size: 10px;
-}
-.debug-prod { color: var(--hi2); font-weight: 700; margin-bottom: 4px; }
-.debug-loc  { display: flex; justify-content: space-between; color: var(--text2); line-height: 1.9; }
-.debug-loc .loc-k { color: var(--text3); }
+.dbg-bd { padding: 14px; display: none; }
+.dbg-bd.open { display: block; }
+.dbg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; }
+.dbg-item { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 9px 11px; }
+.dbg-prod { color: var(--hi2); font-family: var(--mono); font-size: 10px; font-weight: 700; margin-bottom: 5px; }
+.dbg-row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--text2); line-height: 2; }
+.dbg-row .dk { color: var(--text3); }
 
 /* Empty state */
-.empty-state {
-  text-align: center; padding: 50px 20px;
-  color: var(--text3); font-family: var(--mono);
-}
-.empty-state .eicon { font-size: 36px; margin-bottom: 12px; }
-.empty-state .emsg  { font-size: 11px; letter-spacing: .06em; line-height: 2; }
-
-/* Animations */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: none; }
-}
-.anim { animation: fadeUp .22s ease both; }
+.empty { text-align: center; padding: 50px 20px; color: var(--text3); font-family: var(--mono); }
+.empty .ico { font-size: 36px; margin-bottom: 12px; }
+.empty .msg { font-size: 11px; letter-spacing: .05em; line-height: 2.2; }
 
 /* Responsive */
 @media (max-width: 960px) {
   .layout { grid-template-columns: 1fr; }
   .sidebar { max-height: none; }
   .two-col { grid-template-columns: 1fr; }
-  .summary-grid { grid-template-columns: repeat(2,1fr); }
+  .sum-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 </head>
 <body>
 
-<!-- ══════════════ HEADER ══════════════ -->
+<!-- ═════════════════ HEADER ═════════════════ -->
 <header>
   <div class="hbadge">ERP · T1</div>
   <div class="htitle">TRANSFER RECOMMENDER</div>
   <div class="hright">
-    <div id="valDisplay">No valuation data loaded</div>
+    <div id="valDisplay">No valuation data</div>
   </div>
 </header>
 
-<!-- ══════════════ LAYOUT ══════════════ -->
+<!-- ═════════════════ LAYOUT ═════════════════ -->
 <div class="layout">
 
   <!-- ══ SIDEBAR ══ -->
   <aside class="sidebar">
 
     <!-- MODE -->
-    <div class="sb-section">
-      <div class="sb-head">Logistics Mode</div>
-      <div class="sb-body">
-        <div class="mode-toggle">
-          <button class="mode-btn active" id="btnPull" onclick="setMode('pull')">PULL</button>
-          <button class="mode-btn"        id="btnPush" onclick="setMode('push')">PUSH</button>
+    <div class="sb-sec">
+      <div class="sb-hd">Logistics Mode</div>
+      <div class="sb-bd">
+        <div class="mode-wrap">
+          <button class="mbtn on" id="btnPull" onclick="setMode('pull')">PULL</button>
+          <button class="mbtn"    id="btnPush" onclick="setMode('push')">PUSH</button>
         </div>
         <div id="modeDesc">PULL: Uses last-round sales as demand forecast.</div>
       </div>
     </div>
 
     <!-- UPLOADS -->
-    <div class="sb-section">
-      <div class="sb-head">Data Upload</div>
-      <div class="sb-body">
+    <div class="sb-sec">
+      <div class="sb-hd">Data Upload</div>
+      <div class="sb-bd">
 
-        <label class="upload-btn" id="btnSales">
-          <span class="icon">📊</span><span>Upload Sales Report</span>
+        <!-- SALES -->
+        <label class="upbtn" id="btnSales">
+          <span class="ico">📊</span><span>Upload Sales Report</span>
           <input type="file" accept=".csv,.xlsx,.xls" onchange="handleFile(event,'sales')">
         </label>
-        <div class="upload-hint" id="hintSales">
+        <div class="uphint" id="hintSales">
           Columns: Area · Material Number · Quantity<br>
-          Area accepts: North/South/West or 03N/03S/03W
+          Area values: North, South, West
         </div>
 
-        <label class="upload-btn" id="btnInv">
-          <span class="icon">📦</span><span>Upload Inventory Report</span>
+        <!-- INVENTORY -->
+        <label class="upbtn" id="btnInv">
+          <span class="ico">📦</span><span>Upload Inventory Report</span>
           <input type="file" accept=".csv,.xlsx,.xls" onchange="handleFile(event,'inventory')">
         </label>
-        <div class="upload-hint" id="hintInv">
-          Columns: Product · Location · Quantity<br>
-          Location accepts: HUB/03 and North/South/West or 03N/03S/03W
+        <div class="uphint" id="hintInv">
+          Columns: Location · Material · Stock · Reserved<br>
+          Location: 03 (HUB) · 03N · 03S · 03W<br>
+          Available = Stock − Reserved
         </div>
 
-        <label class="upload-btn" id="btnVal">
-          <span class="icon">📈</span><span>Upload Valuation Report</span>
+        <!-- VALUATION -->
+        <label class="upbtn" id="btnVal">
+          <span class="ico">📈</span><span>Upload Valuation Report</span>
           <input type="file" accept=".csv,.xlsx,.xls" onchange="handleFile(event,'valuation')">
         </label>
-        <div class="upload-hint" id="hintVal">
+        <div class="uphint" id="hintVal">
           Columns: Simulation Round · Simulation Step · Company Valuation
         </div>
 
@@ -427,54 +388,42 @@ tr.row-ok   td { background: #061a1033 !important; }
     </div>
 
     <!-- MANUAL INVENTORY -->
-    <div class="sb-section">
-      <div class="sb-head">Manual Inventory Entry</div>
-      <div class="sb-body">
-        <!-- NOTE: dropdown only shows canonical 4 locations -->
-        <div class="mini-form">
-          <input type="text" id="manProduct" placeholder="Product code (e.g. T01)">
-          <select id="manLocation">
-            <option value="HUB">HUB (Main Hub)</option>
+    <div class="sb-sec">
+      <div class="sb-hd">Manual Inventory Entry</div>
+      <div class="sb-bd">
+        <div class="mform">
+          <input type="text" id="manProd" placeholder="Product (e.g. T01)">
+          <!-- Dropdown is ONLY canonical names — never 03/03N/03S/03W -->
+          <select id="manLoc">
+            <option value="HUB">HUB</option>
             <option value="North">North</option>
             <option value="South">South</option>
             <option value="West">West</option>
           </select>
           <input type="number" id="manQty" placeholder="Quantity" min="0">
-          <button class="upload-btn" style="margin:0" onclick="addManualInventory()">
-            <span class="icon">＋</span><span>Add Entry</span>
+          <button class="upbtn" style="margin:0" onclick="addManual()">
+            <span class="ico">＋</span><span>Add Entry</span>
           </button>
         </div>
-        <div class="inv-entries" id="manualEntries"></div>
+        <div class="inv-list" id="manList"></div>
       </div>
     </div>
 
-    <!-- LOAD SAMPLE + GENERATE -->
-    <button class="sample-btn" onclick="loadSampleInventory()">⬇ Load Sample Inventory</button>
-    <button class="gen-btn" onclick="generate()">▶ Generate Recommendations</button>
+    <!-- SAMPLE + GENERATE -->
+    <button class="sampbtn" onclick="loadSample()">⬇ Load Sample Inventory</button>
+    <button class="genbtn" onclick="generate()">▶ Generate Recommendations</button>
 
     <!-- ADVANCED SETTINGS (collapsed by default) -->
-    <div class="adv-toggle" id="advToggle" onclick="toggleAdv()">⚙ ADVANCED SETTINGS ▾</div>
-    <div class="adv-panel" id="advPanel">
-      <div class="sb-section">
-        <div class="sb-head">Config</div>
-        <div class="sb-body">
-          <div class="adv-row">
-            <div class="adv-field">
-              <label>Hub Buffer</label>
-              <input type="number" id="cfgBuffer" value="50" min="0">
-            </div>
-            <div class="adv-field">
-              <label>Safety Stock</label>
-              <input type="number" id="cfgSafety" value="20" min="0">
-            </div>
-            <div class="adv-field">
-              <label>MA Window</label>
-              <input type="number" id="cfgMA" value="2" min="1">
-            </div>
-            <div class="adv-field">
-              <label>Transport $</label>
-              <input type="number" id="cfgTransport" value="100" min="0">
-            </div>
+    <div class="adv-toggle" onclick="toggleAdv()">⚙ ADVANCED SETTINGS ▾</div>
+    <div class="adv-body" id="advBody">
+      <div class="sb-sec">
+        <div class="sb-hd">Config</div>
+        <div class="sb-bd">
+          <div class="adv-grid">
+            <div class="adv-f"><label>Hub Buffer</label>  <input type="number" id="cfgBuf"  value="50"  min="0"></div>
+            <div class="adv-f"><label>Safety Stock</label><input type="number" id="cfgSafe" value="20"  min="0"></div>
+            <div class="adv-f"><label>MA Window</label>   <input type="number" id="cfgMA"   value="2"   min="1"></div>
+            <div class="adv-f"><label>Transport $</label> <input type="number" id="cfgTran" value="100" min="0"></div>
           </div>
         </div>
       </div>
@@ -484,58 +433,55 @@ tr.row-ok   td { background: #061a1033 !important; }
 
   <!-- ══ MAIN CONTENT ══ -->
   <main class="content" id="mainContent">
-    <div class="empty-state" id="emptyState">
-      <div class="eicon">⬆</div>
-      <div class="emsg">
-        UPLOAD SALES REPORT AND CLICK GENERATE RECOMMENDATIONS<br>
-        <span style="color:var(--text3)">Or load sample inventory to test the tool</span>
+    <div class="empty" id="emptyState">
+      <div class="ico">⬆</div>
+      <div class="msg">
+        UPLOAD SALES AND INVENTORY REPORTS,<br>
+        THEN CLICK GENERATE RECOMMENDATIONS<br>
+        <span style="color:var(--text3)">— or click Load Sample Inventory to test —</span>
       </div>
     </div>
   </main>
 
-</div>
+</div><!-- end .layout -->
 
 <script>
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// CANONICAL CONSTANTS
+// The tool ONLY uses these 4 locations internally.
+// ALL raw data is normalized to these on import — never stored as 03/03N/03S/03W.
+// ══════════════════════════════════════════════════════════════════════
+const REGIONS  = ['North', 'South', 'West'];       // regional warehouses
+const ALL_LOCS = ['HUB', 'North', 'South', 'West']; // all canonical locations
+
+// ══════════════════════════════════════════════════════════════════════
 // LOCATION NORMALIZATION
-// ══════════════════════════════════════════════════════════════════
-// This is the single source of truth for location name mapping.
-// All data ingestion (sales, inventory, manual) MUST pass through
-// normalizeLocation() before being stored internally.
-//
-// Mapping:
-//   03   → HUB
+// Maps simulation ERP codes to human-readable canonical names.
+//   03   → HUB    (main warehouse)
 //   03N  → North
 //   03S  → South
 //   03W  → West
-//   HUB  → HUB
-//   North/South/West → unchanged
-// ══════════════════════════════════════════════════════════════════
-
-function normalizeLocation(raw) {
-  if (!raw) return null;
+// Also accepts full canonical names in any case.
+// Returns null for unrecognised codes (those rows are skipped on import).
+// ══════════════════════════════════════════════════════════════════════
+function normLoc(raw) {
+  if (raw === null || raw === undefined) return null;
   const s = String(raw).trim().toUpperCase();
-  // Numeric codes used in simulation ERP exports
-  if (s === '03')  return 'HUB';
-  if (s === '03N') return 'North';
-  if (s === '03S') return 'South';
-  if (s === '03W') return 'West';
-  // Full names (case-insensitive)
-  if (s === 'HUB')   return 'HUB';
-  if (s === 'NORTH') return 'North';
-  if (s === 'SOUTH') return 'South';
-  if (s === 'WEST')  return 'West';
-  // Unknown — pass through as-is (will be ignored in region logic)
-  return raw.trim();
+  if (s === '03')     return 'HUB';
+  if (s === '03N')    return 'North';
+  if (s === '03S')    return 'South';
+  if (s === '03W')    return 'West';
+  if (s === 'HUB')    return 'HUB';
+  if (s === 'NORTH')  return 'North';
+  if (s === 'SOUTH')  return 'South';
+  if (s === 'WEST')   return 'West';
+  return null; // unrecognised — will be skipped
 }
 
-// Canonical regions (never includes HUB, no 03x codes)
-const REGIONS = ['North', 'South', 'West'];
-
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // MATERIAL NORMALIZATION
-// BB-T01 → T01, T02 → T02, etc.
-// ══════════════════════════════════════════════════════════════════
+// Strips prefixes: BB-T01 → T01, T02 → T02
+// ══════════════════════════════════════════════════════════════════════
 function normMat(s) {
   if (!s) return '';
   s = String(s).trim().toUpperCase();
@@ -543,56 +489,46 @@ function normMat(s) {
   return m ? m[1] : s;
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // STATE
-// ══════════════════════════════════════════════════════════════════
+// All structures use canonical location/product keys only.
+// ══════════════════════════════════════════════════════════════════════
+let sales           = {};   // sales[product][region]  — canonical regions
+let salesHistory    = {};   // salesHistory[round][product][region]
+let inventory       = {};   // inventory[product][loc]  — canonical locations, qty = Stock-Reserved
+let manualInv       = [];   // [{product, location, qty}] — canonical
+let valuationHist   = [];   // [{round, step, valuation}]
+let mode            = 'pull';
 
-// sales[product][region] — ONLY canonical regions (North/South/West)
-let sales = {};
-// salesHistory[round][product][region] — for push mode MA
-let salesHistory = {};
-
-// inventory[product][location] — ONLY canonical locations
-// location ∈ { HUB, North, South, West }
-let inventory = {};
-
-// Manual entries: [{product, location, qty}] — locations already normalized
-let manualInventory = [];
-
-// Valuation history
-let valuationHistory = [];
-
-// Current mode
-let mode = 'pull';
-
-// ══════════════════════════════════════════════════════════════════
-// CONFIG
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// CONFIG HELPER
+// ══════════════════════════════════════════════════════════════════════
 function cfg() {
   return {
-    buffer:    parseInt(document.getElementById('cfgBuffer').value)    || 50,
-    safety:    parseInt(document.getElementById('cfgSafety').value)    || 20,
-    maWindow:  parseInt(document.getElementById('cfgMA').value)        || 2,
-    transport: parseInt(document.getElementById('cfgTransport').value) || 100,
+    buffer:    parseInt(document.getElementById('cfgBuf').value)  || 50,
+    safety:    parseInt(document.getElementById('cfgSafe').value) || 20,
+    maWindow:  parseInt(document.getElementById('cfgMA').value)   || 2,
+    transport: parseInt(document.getElementById('cfgTran').value) || 100,
   };
 }
 
-// ══════════════════════════════════════════════════════════════════
-// FILE PARSING
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// FILE PARSING UTILITIES
+// ══════════════════════════════════════════════════════════════════════
 function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
-  const headers = lines[0].split(/[,\t]/).map(h => h.trim().replace(/^"|"$/g,''));
+  const headers = lines[0].split(/[,\t]/).map(h => h.trim().replace(/^"|"$/g, ''));
   return lines.slice(1).map(line => {
-    const vals = line.split(/[,\t]/).map(v => v.trim().replace(/^"|"$/g,''));
+    const vals = line.split(/[,\t]/).map(v => v.trim().replace(/^"|"$/g, ''));
     const obj = {};
-    headers.forEach((h, i) => obj[h] = vals[i] ?? '');
+    headers.forEach((h, i) => { obj[h] = vals[i] !== undefined ? vals[i] : ''; });
     return obj;
   });
 }
-function parseXLSX(buffer) {
-  const wb = XLSX.read(buffer, { type: 'array' });
+
+function parseXLSX(arrayBuffer) {
+  const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
   const ws = wb.Sheets[wb.SheetNames[0]];
   return XLSX.utils.sheet_to_json(ws, { defval: '' });
 }
@@ -601,269 +537,270 @@ function handleFile(event, type) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (e) => {
-    let rows;
-    if (file.name.match(/\.(csv|txt)$/i)) {
-      rows = parseCSV(e.target.result);
-    } else {
-      rows = parseXLSX(new Uint8Array(e.target.result));
-    }
+  reader.onload = e => {
+    const rows = file.name.match(/\.(csv|txt)$/i)
+      ? parseCSV(e.target.result)
+      : parseXLSX(e.target.result);
     if (type === 'sales')     processSales(rows, file.name);
     if (type === 'inventory') processInventory(rows, file.name);
     if (type === 'valuation') processValuation(rows, file.name);
   };
-  file.name.match(/\.(csv|txt)$/i)
-    ? reader.readAsText(file)
-    : reader.readAsArrayBuffer(file);
+  file.name.match(/\.(csv|txt)$/i) ? reader.readAsText(file) : reader.readAsArrayBuffer(file);
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // PROCESS SALES
-// Normalizes both material code and region/area before storing.
-// Only stores data for canonical REGIONS (North, South, West).
-// ══════════════════════════════════════════════════════════════════
+// Expected columns: Area, Material Number, Quantity
+// Area can be North/South/West (canonical) — no code conversion needed for sales.
+// ══════════════════════════════════════════════════════════════════════
 function processSales(rows, fname) {
   sales = {};
-  let count = 0, skipped = 0;
+  let loaded = 0, skipped = 0;
 
   rows.forEach(row => {
+    // Column: Area
     const rawArea = (row['Area'] || row['area'] || row['Region'] || row['region'] || '').toString().trim();
+    // Column: Material Number
     const rawMat  = (row['Material Number'] || row['MaterialNumber'] || row['Material'] || row['material'] || '').toString().trim();
+    // Column: Quantity
     const qty     = parseFloat(row['Quantity'] || row['quantity'] || row['Qty'] || 0) || 0;
 
-    if (!rawArea || !rawMat) return;
+    if (!rawArea || !rawMat) { skipped++; return; }
 
-    const mat    = normMat(rawMat);
-    const region = normalizeLocation(rawArea); // 03N → North, etc.
+    const product = normMat(rawMat);
+    const region  = normLoc(rawArea); // normalises if needed, returns null if unknown
 
-    // Only store if it's a known region (not HUB, not unknown)
+    // Only store canonical regional locations (not HUB, not null)
     if (!REGIONS.includes(region)) { skipped++; return; }
 
-    if (!sales[mat]) sales[mat] = {};
-    sales[mat][region] = (sales[mat][region] || 0) + qty;
-    count++;
+    if (!sales[product]) sales[product] = {};
+    sales[product][region] = (sales[product][region] || 0) + qty;
+    loaded++;
   });
 
-  // Also store in round history (use round 0 as "last uploaded round")
+  // Save into history for push-mode moving average
   const round = Object.keys(salesHistory).length + 1;
   salesHistory[round] = JSON.parse(JSON.stringify(sales));
 
-  document.getElementById('btnSales').classList.add('loaded');
-  document.getElementById('hintSales').textContent =
-    `✓ ${count} rows loaded — ${Object.keys(sales).length} products` +
+  document.getElementById('btnSales').classList.add('ok');
+  const hint = document.getElementById('hintSales');
+  hint.textContent = `✓ ${loaded} rows — ${Object.keys(sales).length} products` +
     (skipped ? ` (${skipped} skipped)` : '');
-  document.getElementById('hintSales').className = 'upload-hint ok';
+  hint.className = 'uphint ok';
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // PROCESS INVENTORY
-// Normalizes locations: 03 → HUB, 03N → North, etc.
-// ══════════════════════════════════════════════════════════════════
+// Expected columns: Location, Category, Material, Description, Stock, Reserved, Unit
+//
+// Key logic:
+//   product          = normMat(row["Material"])
+//   location         = normLoc(row["Location"])   — 03→HUB, 03N→North, etc.
+//   available_qty    = max(0, Stock - Reserved)
+//
+// Only canonical locations (HUB/North/South/West) are stored.
+// Rows with unrecognised Location codes are silently skipped.
+// ══════════════════════════════════════════════════════════════════════
 function processInventory(rows, fname) {
   inventory = {};
-  let count = 0;
+  let loaded = 0, skipped = 0;
 
   rows.forEach(row => {
-    const rawProd = (row['Product'] || row['product'] || row['Material'] || row['material'] || '').toString().trim();
-    const rawLoc  = (row['Location'] || row['location'] || row['Warehouse'] || row['warehouse'] || '').toString().trim();
-    const qty     = parseFloat(row['Quantity'] || row['quantity'] || row['Qty'] || 0) || 0;
+    // Column: Location  (03, 03N, 03S, 03W — must be normalised)
+    const rawLoc  = (row['Location'] || row['location'] || '').toString().trim();
+    // Column: Material  (product code, may have BB- prefix)
+    const rawMat  = (row['Material'] || row['material'] || row['Product'] || row['product'] || '').toString().trim();
+    // Column: Stock     (total stock on hand)
+    const stock   = parseFloat(row['Stock']    || row['stock']    || row['Qty'] || row['Quantity'] || 0) || 0;
+    // Column: Reserved  (reserved/committed stock — must be subtracted)
+    const reserved= parseFloat(row['Reserved'] || row['reserved'] || 0) || 0;
 
-    if (!rawProd || !rawLoc) return;
+    if (!rawLoc || !rawMat) { skipped++; return; }
 
-    const prod = normMat(rawProd);
-    const loc  = normalizeLocation(rawLoc); // 03 → HUB, 03N → North, etc.
+    const product  = normMat(rawMat);
+    const location = normLoc(rawLoc); // 03 → HUB, 03N → North, 03S → South, 03W → West
 
-    // Only store known canonical locations
-    if (!['HUB','North','South','West'].includes(loc)) return;
+    // Skip rows that don't map to a canonical location
+    if (!ALL_LOCS.includes(location)) { skipped++; return; }
 
-    if (!inventory[prod]) inventory[prod] = {};
-    inventory[prod][loc] = qty;
-    count++;
+    // available_quantity = max(0, Stock - Reserved)
+    const available = Math.max(0, stock - reserved);
+
+    if (!inventory[product]) inventory[product] = {};
+    // If same product+location appears multiple times, accumulate
+    inventory[product][location] = (inventory[product][location] || 0) + available;
+    loaded++;
   });
 
-  document.getElementById('btnInv').classList.add('loaded');
-  document.getElementById('hintInv').textContent =
-    `✓ ${count} rows — ${Object.keys(inventory).length} products`;
-  document.getElementById('hintInv').className = 'upload-hint ok';
+  document.getElementById('btnInv').classList.add('ok');
+  const hint = document.getElementById('hintInv');
+  hint.textContent = `✓ ${loaded} rows — ${Object.keys(inventory).length} products` +
+    (skipped ? ` (${skipped} rows skipped — unrecognised location)` : '');
+  hint.className = 'uphint ok';
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // PROCESS VALUATION
-// ══════════════════════════════════════════════════════════════════
+// Expected columns: Simulation Round, Simulation Step, Company Valuation
+// ══════════════════════════════════════════════════════════════════════
 function processValuation(rows, fname) {
-  valuationHistory = rows.map(row => ({
+  valuationHist = rows.map(row => ({
     round:     parseInt(row['Simulation Round'] || row['Round'] || row['round'] || 0),
     step:      parseInt(row['Simulation Step']  || row['Step']  || row['step']  || 0),
-    valuation: parseFloat(String(row['Company Valuation'] || row['Valuation'] || row['valuation'] || 0)
-                  .replace(/[$,\s]/g,'')) || 0,
+    valuation: parseFloat(
+      String(row['Company Valuation'] || row['Valuation'] || row['valuation'] || 0)
+        .replace(/[$,\s]/g, '')
+    ) || 0,
   })).filter(r => r.valuation > 0);
 
-  document.getElementById('btnVal').classList.add('loaded');
-  document.getElementById('hintVal').textContent = `✓ ${valuationHistory.length} valuation entries`;
-  document.getElementById('hintVal').className = 'upload-hint ok';
-  updateValDisplay();
+  document.getElementById('btnVal').classList.add('ok');
+  const hint = document.getElementById('hintVal');
+  hint.textContent = `✓ ${valuationHist.length} valuation entries loaded`;
+  hint.className = 'uphint ok';
+  renderValDisplay();
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // MANUAL INVENTORY
-// Location dropdown only shows canonical names, so no normalization needed
-// ══════════════════════════════════════════════════════════════════
-function addManualInventory() {
-  const prod = normMat(document.getElementById('manProduct').value.trim());
-  const loc  = document.getElementById('manLocation').value; // always canonical
+// Dropdown only offers canonical names — no normalisation needed here.
+// ══════════════════════════════════════════════════════════════════════
+function addManual() {
+  const prod = normMat(document.getElementById('manProd').value.trim());
+  const loc  = document.getElementById('manLoc').value; // already canonical
   const qty  = parseInt(document.getElementById('manQty').value) || 0;
-  if (!prod) { alert('Enter a product code.'); return; }
-
+  if (!prod) { alert('Enter a product code first.'); return; }
   // Replace existing entry for same product+location
-  manualInventory = manualInventory.filter(e => !(e.product === prod && e.location === loc));
-  manualInventory.push({ product: prod, location: loc, qty });
-
-  document.getElementById('manProduct').value = '';
-  document.getElementById('manQty').value = '';
-  renderManualEntries();
+  manualInv = manualInv.filter(e => !(e.product === prod && e.location === loc));
+  manualInv.push({ product: prod, location: loc, qty });
+  document.getElementById('manProd').value = '';
+  document.getElementById('manQty').value  = '';
+  renderManualList();
 }
 
-function removeManual(i) {
-  manualInventory.splice(i, 1);
-  renderManualEntries();
-}
+function removeManual(i) { manualInv.splice(i, 1); renderManualList(); }
 
-function renderManualEntries() {
-  const el = document.getElementById('manualEntries');
-  if (!manualInventory.length) { el.innerHTML = ''; return; }
-  el.innerHTML = manualInventory.map((e, i) => `
-    <div class="inv-entry-row">
+function renderManualList() {
+  const el = document.getElementById('manList');
+  if (!manualInv.length) { el.innerHTML = ''; return; }
+  el.innerHTML = manualInv.map((e, i) => `
+    <div class="inv-row">
       <span><span style="color:var(--hi2)">${e.product}</span> @ ${e.location}</span>
       <span style="color:var(--text)">${e.qty}</span>
       <button class="inv-del" onclick="removeManual(${i})">×</button>
     </div>`).join('');
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // LOAD SAMPLE INVENTORY
-// Fills hub + regional stock with demo data for classroom testing
-// ══════════════════════════════════════════════════════════════════
-function loadSampleInventory() {
-  const samples = [
-    { product:'T01', location:'HUB',   qty:300 },
-    { product:'T01', location:'North', qty:20  },
-    { product:'T01', location:'South', qty:15  },
-    { product:'T01', location:'West',  qty:10  },
-    { product:'T02', location:'HUB',   qty:200 },
-    { product:'T02', location:'North', qty:10  },
-    { product:'T02', location:'South', qty:8   },
-    { product:'T02', location:'West',  qty:12  },
-    { product:'T03', location:'HUB',   qty:150 },
-    { product:'T03', location:'North', qty:5   },
-    { product:'T03', location:'South', qty:7   },
-    { product:'T03', location:'West',  qty:3   },
-  ];
+// Pre-fills demo data so the tool can be tested in class without uploads.
+// ══════════════════════════════════════════════════════════════════════
+function loadSample() {
+  // Sample inventory (using canonical locations)
+  inventory = {
+    T01: { HUB: 300, North: 20, South: 15, West: 10 },
+    T02: { HUB: 200, North: 10, South:  8, West: 12 },
+    T03: { HUB: 150, North:  5, South:  7, West:  3 },
+  };
+  manualInv = [];
+  renderManualList();
 
-  // Load into inventory object
-  inventory = {};
-  samples.forEach(s => {
-    if (!inventory[s.product]) inventory[s.product] = {};
-    inventory[s.product][s.location] = s.qty;
-  });
-
-  // Clear manual entries
-  manualInventory = [];
-  renderManualEntries();
-
-  // Also populate with sample sales if none exist
+  // Sample sales if none loaded
   if (!Object.keys(sales).length) {
     sales = {
       T01: { North: 32, South: 28, West: 18 },
       T02: { North: 15, South: 20, West: 25 },
-      T03: { North: 8,  South: 12, West: 5  },
+      T03: { North:  8, South: 12, West:  5 },
     };
     salesHistory[1] = JSON.parse(JSON.stringify(sales));
-    document.getElementById('hintSales').textContent = '✓ Sample sales loaded';
-    document.getElementById('hintSales').className = 'upload-hint ok';
+    const sh = document.getElementById('hintSales');
+    sh.textContent = '✓ Sample sales loaded';
+    sh.className = 'uphint ok';
   }
 
-  document.getElementById('btnInv').classList.add('loaded');
-  document.getElementById('hintInv').textContent = '✓ Sample inventory loaded (3 products)';
-  document.getElementById('hintInv').className = 'upload-hint ok';
+  document.getElementById('btnInv').classList.add('ok');
+  const ih = document.getElementById('hintInv');
+  ih.textContent = '✓ Sample inventory loaded (T01 · T02 · T03)';
+  ih.className = 'uphint ok';
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // INVENTORY LOOKUP
-// Priority: manual entry > uploaded inventory > 0
-// ══════════════════════════════════════════════════════════════════
-function getInventory(product, location) {
-  // Manual entries take priority (already canonical location names)
-  const manual = manualInventory.find(e => e.product === product && e.location === location);
-  if (manual !== undefined) return manual.qty;
-  // Uploaded inventory (already normalized on import)
-  if (inventory[product] && inventory[product][location] !== undefined)
-    return inventory[product][location];
-  return 0;
+// Priority: manual entry (overrides) > uploaded inventory > 0
+// ══════════════════════════════════════════════════════════════════════
+function getInv(product, location) {
+  const m = manualInv.find(e => e.product === product && e.location === location);
+  if (m !== undefined) return m.qty;
+  return (inventory[product] && inventory[product][location] !== undefined)
+    ? inventory[product][location]
+    : 0;
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // DEMAND FORECAST
-// Pull: last uploaded sales round
+// Pull: last uploaded round's sales
 // Push: moving average of salesHistory rounds
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 function getForecast(product, region) {
   if (mode === 'pull') {
     return (sales[product] && sales[product][region]) || 0;
   }
-  // Push: moving average over last N rounds
-  const window = cfg().maWindow;
-  const rounds = Object.keys(salesHistory).map(Number).sort((a,b)=>b-a).slice(0, window);
+  const win = cfg().maWindow;
+  const rounds = Object.keys(salesHistory).map(Number).sort((a,b)=>b-a).slice(0, win);
   if (!rounds.length) return (sales[product] && sales[product][region]) || 0;
-  let total = 0, count = 0;
-  rounds.forEach(r => {
-    const v = salesHistory[r]?.[product]?.[region] || 0;
-    total += v; count++;
-  });
-  return count > 0 ? total / count : 0;
+  let total = 0, cnt = 0;
+  rounds.forEach(r => { total += salesHistory[r]?.[product]?.[region] || 0; cnt++; });
+  return cnt > 0 ? total / cnt : 0;
 }
 
-// ══════════════════════════════════════════════════════════════════
-// MAIN RECOMMENDATION ENGINE
-// Only operates on canonical locations. REGIONS = [North, South, West]
-// ══════════════════════════════════════════════════════════════════
-function computeRecommendations() {
+// ══════════════════════════════════════════════════════════════════════
+// MODE TOGGLE
+// ══════════════════════════════════════════════════════════════════════
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnPull').classList.toggle('on', m === 'pull');
+  document.getElementById('btnPush').classList.toggle('on', m === 'push');
+  document.getElementById('modeDesc').textContent = m === 'pull'
+    ? 'PULL: Uses last-round sales as demand forecast.'
+    : 'PUSH: Uses moving average of recent rounds.';
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// RECOMMENDATION ENGINE
+// Operates ONLY on canonical locations: HUB, North, South, West
+// No 03/03N/03S/03W ever appear here.
+// ══════════════════════════════════════════════════════════════════════
+function compute() {
   const c = cfg();
 
-  // Collect all products from all sources
+  // Collect all products from all data sources (already normalised)
   const products = [...new Set([
     ...Object.keys(sales),
     ...Object.keys(inventory),
-    ...manualInventory.map(e => e.product),
+    ...manualInv.map(e => e.product),
   ])].filter(Boolean).sort();
 
-  const results = [];
+  return products.map(product => {
+    // ── Hub stock (canonical: "HUB") ──
+    const hubStock = getInv(product, 'HUB');
 
-  products.forEach(product => {
-    // ── Hub stock: inventory[product]["HUB"] ──
-    const hubStock = getInventory(product, 'HUB');
+    // ── Hub available = max(0, hub_stock - hub_buffer) ──
+    const hubAvail = Math.max(0, hubStock - c.buffer);
 
-    // ── Hub available = hub_stock - hub_buffer ──
-    const hubAvailable = Math.max(0, hubStock - c.buffer);
-
-    // ── Per-region requirements (only REGIONS = North/South/West) ──
+    // ── Per-region data (REGIONS = [North, South, West] only) ──
     const regionData = REGIONS.map(region => {
       const forecast    = getForecast(product, region);
-      const targetStock = forecast + c.safety;              // target = forecast + safety
-      const regionInv   = getInventory(product, region);   // current regional inventory
-      const inTransit   = 0;                               // pipeline (future)
-      // net_requirement = max(0, target - regional_inv - in_transit)
-      const netReq      = Math.max(0, targetStock - regionInv - inTransit);
-      const soldQty     = (sales[product] && sales[product][region]) || 0;
-      return { region, forecast, targetStock, regionInv, inTransit, netReq, soldQty };
+      const target      = forecast + c.safety;           // target_stock = forecast + safety_stock
+      const regInv      = getInv(product, region);       // current regional inventory
+      const netReq      = Math.max(0, target - regInv);  // net_requirement = max(0, target - current)
+      const sold        = (sales[product] && sales[product][region]) || 0;
+      return { region, forecast, target, regInv, netReq, sold };
     });
 
-    // ── Sort regions by highest net requirement (priority allocation) ──
-    const sorted = [...regionData].sort((a, b) => b.netReq - a.netReq);
-
-    // ── Allocate transfers while hub stock remains available ──
-    let remaining = hubAvailable;
+    // ── Sort regions by highest demand for priority allocation ──
+    const sorted   = [...regionData].sort((a, b) => b.netReq - a.netReq);
+    let remaining  = hubAvail;
     const transfers = {};
-    REGIONS.forEach(r => transfers[r] = 0);
+    REGIONS.forEach(r => { transfers[r] = 0; });
 
     sorted.forEach(rd => {
       if (remaining <= 0) return;
@@ -872,341 +809,326 @@ function computeRecommendations() {
       remaining -= xfer;
     });
 
-    const totalOutbound = REGIONS.reduce((s, r) => s + (transfers[r] || 0), 0);
-    const totalNetReq   = regionData.reduce((s, rd) => s + rd.netReq, 0);
-
-    // ── Hub remaining = hub_stock - total_outbound ──
-    const hubRemaining = hubStock - totalOutbound;
+    const totalOut   = REGIONS.reduce((s, r) => s + transfers[r], 0);
+    const totalNeed  = regionData.reduce((s, rd) => s + rd.netReq, 0);
+    const hubAfter   = hubStock - totalOut;  // hub_remaining = hub_stock - total_outbound
 
     // ── Status logic ──
     let status;
-    if (hubStock <= c.buffer)                                        status = 'low';
-    else if (totalOutbound > 0 && totalOutbound < totalNetReq)       status = 'partial';
-    else if (totalOutbound === 0 && totalNetReq === 0)               status = 'sufficient';
-    else if (totalOutbound === 0 && totalNetReq > 0)                 status = 'low'; // can't transfer
-    else                                                              status = 'transfer';
+    if (hubStock <= c.buffer)                               status = 'low';
+    else if (totalOut > 0 && totalOut < totalNeed)          status = 'partial';
+    else if (totalOut === 0 && totalNeed === 0)             status = 'sufficient';
+    else if (totalOut === 0 && totalNeed > 0)               status = 'low';
+    else                                                    status = 'transfer';
 
-    results.push({ product, hubStock, hubAvailable, hubRemaining, regionData, transfers, totalOutbound, totalNetReq, status });
+    return { product, hubStock, hubAvail, hubAfter, regionData, transfers, totalOut, totalNeed, status };
   });
-
-  return { results, c };
 }
 
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // VALUATION ANALYSIS
-// ══════════════════════════════════════════════════════════════════
-function analyzeValuation() {
-  if (valuationHistory.length < 2) return null;
-  const sorted = [...valuationHistory].sort((a,b) => (a.round*100+a.step)-(b.round*100+b.step));
-  const latest   = sorted[sorted.length - 1];
-  const previous = sorted[sorted.length - 2];
-  return { latest, previous, change: latest.valuation - previous.valuation };
+// ══════════════════════════════════════════════════════════════════════
+function analyzeVal() {
+  if (valuationHist.length < 2) return null;
+  const s  = [...valuationHist].sort((a,b) => (a.round*100+a.step) - (b.round*100+b.step));
+  const lt = s[s.length - 1];
+  const pr = s[s.length - 2];
+  return { latest: lt, previous: pr, change: lt.valuation - pr.valuation };
 }
 
-function updateValDisplay() {
-  const v = analyzeValuation();
+function renderValDisplay() {
+  const v = analyzeVal();
   const el = document.getElementById('valDisplay');
-  if (!v) { el.textContent = 'No valuation data loaded'; el.style.color = 'var(--text3)'; return; }
-  const sign  = v.change >= 0 ? '▲' : '▼';
-  const color = v.change >= 0 ? 'var(--grn2)' : 'var(--red)';
+  if (!v) { el.textContent = 'No valuation data'; return; }
+  const c = v.change >= 0 ? 'var(--grn2)' : 'var(--red)';
+  const a = v.change >= 0 ? '▲' : '▼';
   el.innerHTML = `<span style="color:var(--text2)">Valuation</span>
     <span style="color:var(--text);margin:0 8px">$${v.latest.valuation.toLocaleString()}</span>
-    <span style="color:${color}">${sign} $${Math.abs(v.change).toLocaleString()}</span>`;
+    <span style="color:${c}">${a} $${Math.abs(v.change).toLocaleString()}</span>`;
 }
 
-// ══════════════════════════════════════════════════════════════════
-// MODE TOGGLE
-// ══════════════════════════════════════════════════════════════════
-function setMode(m) {
-  mode = m;
-  document.getElementById('btnPull').classList.toggle('active', m === 'pull');
-  document.getElementById('btnPush').classList.toggle('active', m === 'push');
-  document.getElementById('modeDesc').textContent = m === 'pull'
-    ? 'PULL: Uses last-round sales as demand forecast.'
-    : 'PUSH: Uses moving average of recent sales rounds.';
-}
-
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 // GENERATE & RENDER
-// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
 function generate() {
   const hasSales = Object.keys(sales).length > 0;
-  const hasInv   = Object.keys(inventory).length > 0 || manualInventory.length > 0;
-
+  const hasInv   = Object.keys(inventory).length > 0 || manualInv.length > 0;
   if (!hasSales && !hasInv) {
-    showAlert('No data loaded. Upload a Sales or Inventory report, or click "Load Sample Inventory".');
+    renderContent(`<div class="alert anim">No data loaded. Upload a Sales or Inventory report, or click Load Sample Inventory.</div>`);
     return;
   }
 
-  const { results, c } = computeRecommendations();
-  const valAnalysis     = analyzeValuation();
-
-  // ── Check if all hub stock is zero ──
-  const allHubZero = results.every(r => r.hubStock === 0);
+  const results    = compute();
+  const c          = cfg();
+  const valData    = analyzeVal();
 
   // Aggregate metrics
   const totalHubStock  = results.reduce((s, r) => s + r.hubStock, 0);
   const totalShipments = results.reduce((s, r) =>
-    s + REGIONS.filter(reg => (r.transfers[reg] || 0) > 0).length, 0);
+    REGIONS.filter(reg => r.transfers[reg] > 0).length + s, 0);
   const totalCost  = totalShipments * c.transport;
-  const totalUnits = results.reduce((s, r) => s + r.totalOutbound, 0);
+  const totalUnits = results.reduce((s, r) => s + r.totalOut, 0);
 
-  const content = document.getElementById('mainContent');
-  document.getElementById('emptyState').style.display = 'none';
+  // ── Hub-zero warning ──
+  const allHubZero = results.length > 0 && results.every(r => r.hubStock === 0);
 
   let html = '';
 
-  // ── Alert: hub zero ──
   if (allHubZero) {
-    html += `<div class="alert-banner anim">
-      ⚠ Hub inventory is zero or not mapped correctly.
-      Upload an Inventory Report or enter hub stock manually.
-      Make sure location is HUB or 03.
+    html += `<div class="alert anim">
+      ⚠ Hub inventory is zero in the uploaded inventory file. No transfers can be recommended
+      until HUB / 03 has stock. Check that your inventory file has Location = 03 rows with
+      non-zero Stock values, or enter HUB stock manually.
     </div>`;
   }
 
-  // ── Summary cards ──
-  const valTrend = valAnalysis
-    ? (valAnalysis.change >= 0
+  // ── Summary grid ──
+  const vTrend = valData
+    ? (valData.change >= 0
         ? `<span style="color:var(--grn2)">▲ IMPROVING</span>`
         : `<span style="color:var(--red)">▼ DECLINING</span>`)
-    : '<span style="color:var(--text3)">—</span>';
+    : `<span style="color:var(--text3)">— NO DATA</span>`;
 
-  html += `<div class="summary-grid anim" style="animation-delay:.03s">
+  html += `<div class="sum-grid anim" style="animation-delay:.03s">
     <div class="sum-card">
-      <div class="sum-label">Total Hub Stock</div>
+      <div class="sum-lbl">Total Hub Stock</div>
       <div class="sum-val" style="color:${totalHubStock > c.buffer ? 'var(--grn2)' : 'var(--red)'}">${totalHubStock}</div>
       <div class="sum-sub">across all products</div>
     </div>
     <div class="sum-card">
-      <div class="sum-label">Recommended Shipments</div>
+      <div class="sum-lbl">Recommended Shipments</div>
       <div class="sum-val" style="color:var(--hi2)">${totalShipments}</div>
       <div class="sum-sub">${totalUnits} total units</div>
     </div>
     <div class="sum-card">
-      <div class="sum-label">Transport Cost</div>
+      <div class="sum-lbl">Transport Cost</div>
       <div class="sum-val" style="color:var(--yellow)">$${totalCost.toLocaleString()}</div>
       <div class="sum-sub">@ $${c.transport} / shipment</div>
     </div>
     <div class="sum-card">
-      <div class="sum-label">Valuation Trend</div>
-      <div class="sum-val" style="font-size:15px;margin-top:4px">${valTrend}</div>
-      <div class="sum-sub">${valAnalysis ? '$' + Math.abs(valAnalysis.change).toLocaleString() + ' change' : 'no data loaded'}</div>
+      <div class="sum-lbl">Valuation Trend</div>
+      <div class="sum-val" style="font-size:15px;margin-top:4px">${vTrend}</div>
+      <div class="sum-sub">${valData ? '$' + Math.abs(valData.change).toLocaleString() + ' change' : 'upload valuation report'}</div>
     </div>
   </div>`;
 
   // ── Status pills ──
-  html += `<div class="status-bar anim" style="animation-delay:.06s">
-    <div class="stat-pill blue"><span class="lbl">MODE</span><span class="val">${mode.toUpperCase()}</span></div>
-    <div class="stat-pill"><span class="lbl">PRODUCTS</span><span class="val">${results.length}</span></div>
-    <div class="stat-pill"><span class="lbl">REGIONS</span><span class="val">${REGIONS.length}</span></div>
-    <div class="stat-pill ${totalShipments > 0 ? 'blue' : ''}"><span class="lbl">SHIPMENTS</span><span class="val">${totalShipments}</span></div>
-    <div class="stat-pill ${totalCost > 0 ? 'yellow' : ''}"><span class="lbl">EST. COST</span><span class="val">$${totalCost.toLocaleString()}</span></div>
-    <div class="stat-pill"><span class="lbl">BUFFER</span><span class="val">${c.buffer}</span></div>
-    <div class="stat-pill"><span class="lbl">SAFETY STK</span><span class="val">${c.safety}</span></div>
+  html += `<div class="pill-row anim" style="animation-delay:.06s">
+    <div class="pill blue"><span class="lbl">MODE</span><span class="val">${mode.toUpperCase()}</span></div>
+    <div class="pill"><span class="lbl">PRODUCTS</span><span class="val">${results.length}</span></div>
+    <div class="pill ${totalShipments > 0 ? 'blue' : ''}"><span class="lbl">SHIPMENTS</span><span class="val">${totalShipments}</span></div>
+    <div class="pill ${totalCost > 0 ? 'yellow' : ''}"><span class="lbl">EST. COST</span><span class="val">$${totalCost.toLocaleString()}</span></div>
+    <div class="pill"><span class="lbl">HUB BUFFER</span><span class="val">${c.buffer}</span></div>
+    <div class="pill"><span class="lbl">SAFETY STK</span><span class="val">${c.safety}</span></div>
   </div>`;
 
   // ── Valuation card ──
-  if (valAnalysis) {
-    const { latest, previous, change } = valAnalysis;
-    const tc = change > 0 ? 'trend-up' : change < 0 ? 'trend-down' : 'trend-flat';
+  if (valData) {
+    const { latest, previous, change } = valData;
+    const tc = change > 0 ? 'vt-up' : change < 0 ? 'vt-down' : 'vt-flat';
     const tl = change > 0 ? '▲ IMPROVING' : change < 0 ? '▼ DECLINING' : '— STABLE';
-    const warn = change < 0 && totalShipments > 2;
     html += `<div class="val-card anim" style="animation-delay:.09s">
-      <div class="val-item"><div class="val-label">Latest Valuation</div>
-        <div class="val-num" style="color:var(--text)">$${latest.valuation.toLocaleString()}</div></div>
-      <div class="val-item"><div class="val-label">Previous</div>
-        <div class="val-num" style="color:var(--text2);font-size:15px">$${previous.valuation.toLocaleString()}</div></div>
-      <div class="val-item"><div class="val-label">Change</div>
-        <div class="val-num" style="color:${change>=0?'var(--grn2)':'var(--red)'};font-size:15px">${change>=0?'+':''}$${change.toLocaleString()}</div></div>
-      <div class="${tc} val-trend">${tl}</div>
-      ${warn ? '<div class="val-warn">⚠ High logistics activity with declining valuation</div>' : ''}
+      <div class="vi"><div class="vlbl">Latest Valuation</div>
+        <div class="vnum" style="color:var(--text)">$${latest.valuation.toLocaleString()}</div></div>
+      <div class="vi"><div class="vlbl">Previous</div>
+        <div class="vnum" style="color:var(--text2);font-size:15px">$${previous.valuation.toLocaleString()}</div></div>
+      <div class="vi"><div class="vlbl">Change</div>
+        <div class="vnum" style="color:${change>=0?'var(--grn2)':'var(--red)'};font-size:15px">${change>=0?'+':''}$${change.toLocaleString()}</div></div>
+      <div class="${tc} vtrend">${tl}</div>
+      ${change < 0 && totalShipments > 2 ? '<div class="vwarn">⚠ High logistics activity with declining valuation</div>' : ''}
     </div>`;
   }
 
-  // ── Transfer Recommendation Table ──
-  // Columns: Health | Product | Hub Stock | North Sold | South Sold | West Sold |
-  //          → North | → South | → West | Hub Remaining | Status
+  // ══════════════════════════════════════════════════════════════════
+  // TRANSFER RECOMMENDATIONS TABLE
+  // Fixed columns: Product | Hub Stock | North Sold | South Sold | West Sold
+  //                → North | → South | → West | Hub Remaining | Status
+  // NEVER shows 03/03N/03S/03W columns.
+  // ══════════════════════════════════════════════════════════════════
   html += `<div class="card anim" style="animation-delay:.12s">
-    <div class="card-head"><div class="dot"></div>TRANSFER RECOMMENDATIONS</div>
-    <div class="card-body"><table>
+    <div class="card-hd"><div class="dot"></div>TRANSFER RECOMMENDATIONS</div>
+    <div class="card-bd"><table>
     <thead><tr>
       <th></th>
       <th>Product</th>
-      <th class="num">Hub Stock</th>
-      ${REGIONS.map(r => `<th class="num">${r} Sold</th>`).join('')}
-      ${REGIONS.map(r => `<th class="num">→ ${r}</th>`).join('')}
-      <th class="num">Hub Remaining</th>
+      <th class="r">Hub Stock</th>
+      ${REGIONS.map(r => `<th class="r">${r} Sold</th>`).join('')}
+      ${REGIONS.map(r => `<th class="r">→ ${r}</th>`).join('')}
+      <th class="r">Hub Remaining</th>
       <th>Status</th>
     </tr></thead>
     <tbody>`;
 
   results.forEach(r => {
-    const rowCls = { low:'row-low', partial:'row-warn', transfer:'row-ok', sufficient:'' }[r.status] || '';
-    const badge  = {
-      low:        '<span class="badge b-low">HUB LOW</span>',
-      partial:    '<span class="badge b-partial">PARTIAL</span>',
-      transfer:   '<span class="badge b-transfer">TRANSFER</span>',
-      sufficient: '<span class="badge b-sufficient">SUFFICIENT</span>',
+    const rc  = { low:'row-low', partial:'row-warn', transfer:'row-ok', sufficient:'' }[r.status] || '';
+    const bdg = {
+      low:        '<span class="badge b-lw">HUB LOW</span>',
+      partial:    '<span class="badge b-pa">PARTIAL</span>',
+      transfer:   '<span class="badge b-tf">TRANSFER</span>',
+      sufficient: '<span class="badge b-ok">SUFFICIENT</span>',
     }[r.status] || '';
 
-    const hPct   = r.hubStock > 0 ? r.hubRemaining / r.hubStock : 0;
-    const hClass = hPct > 0.4 ? 'hg' : hPct > 0.15 ? 'hy' : 'hr';
-    const remColor = r.hubRemaining < 0 ? 'color:var(--red)' : r.hubRemaining < c.buffer ? 'color:var(--yellow)' : '';
+    const hp  = r.hubStock > 0 ? r.hubAfter / r.hubStock : 0;
+    const hdc = hp > 0.4 ? 'hg' : hp > 0.15 ? 'hy' : 'hr';
+    const rmc = r.hubAfter < 0 ? 'color:var(--red)' : r.hubAfter < c.buffer ? 'color:var(--yellow)' : '';
 
-    html += `<tr class="${rowCls}">
-      <td><span class="hdot ${hClass}"></span></td>
+    html += `<tr class="${rc}">
+      <td><span class="hdot ${hdc}"></span></td>
       <td style="font-weight:700;color:var(--hi2)">${r.product}</td>
-      <td class="num">${r.hubStock}</td>
+      <td class="r">${r.hubStock}</td>
       ${REGIONS.map(reg => {
-        const sold = r.regionData.find(d => d.region === reg)?.soldQty || 0;
-        return `<td class="num" style="color:var(--text2)">${sold > 0 ? sold : '—'}</td>`;
+        const sold = r.regionData.find(d => d.region === reg)?.sold || 0;
+        return `<td class="r" style="color:var(--text2)">${sold > 0 ? sold : '—'}</td>`;
       }).join('')}
       ${REGIONS.map(reg => {
         const xfer = r.transfers[reg] || 0;
-        return `<td class="num ${xfer > 0 ? 'xfer-val' : 'xfer-zero'}">${xfer > 0 ? xfer : '—'}</td>`;
+        return `<td class="r ${xfer > 0 ? 'xv' : 'xz'}">${xfer > 0 ? xfer : '—'}</td>`;
       }).join('')}
-      <td class="num" style="${remColor}">${r.hubRemaining}</td>
-      <td>${badge}</td>
+      <td class="r" style="${rmc}">${r.hubAfter}</td>
+      <td>${bdg}</td>
     </tr>`;
   });
 
   html += `</tbody></table>
     <div class="cost-bar">
-      <span>TOTAL OUTBOUND: <span style="color:var(--text)">${totalUnits} units</span></span>
+      <span>OUTBOUND: <span style="color:var(--text)">${totalUnits} units</span></span>
       <span class="sep">|</span>
       <span>SHIPMENTS: <span style="color:var(--text)">${totalShipments}</span></span>
       <span class="sep">|</span>
       <span>TRANSPORT COST: <span class="cv">$${totalCost.toLocaleString()}</span></span>
+      <span class="sep">|</span>
+      <span>@ $${c.transport} / shipment</span>
     </div>
   </div></div>`;
 
-  // ── Two-col: Demand Forecast + Hub Summary ──
+  // ══════════════════════════════════════════════════════════════════
+  // TWO-COL: DEMAND FORECAST + HUB SUMMARY
+  // ══════════════════════════════════════════════════════════════════
   html += `<div class="two-col">`;
 
-  // Demand Forecast Detail — only North/South/West, never 03x
+  // ── Demand Forecast Detail
+  // Region column: North, South, West ONLY. Never 03/03N/03S/03W.
   html += `<div class="card anim" style="animation-delay:.15s">
-    <div class="card-head"><div class="dot" style="background:var(--yellow)"></div>DEMAND FORECAST DETAIL</div>
-    <div class="card-body"><table>
+    <div class="card-hd"><div class="dot" style="background:var(--yellow)"></div>DEMAND FORECAST DETAIL</div>
+    <div class="card-bd"><table>
     <thead><tr>
       <th>Product</th><th>Region</th>
-      <th class="num">Sold</th>
-      <th class="num">Forecast</th>
-      <th class="num">Target</th>
-      <th class="num">Reg. Inv</th>
-      <th class="num">Net Need</th>
+      <th class="r">Sold</th>
+      <th class="r">Forecast</th>
+      <th class="r">Target</th>
+      <th class="r">Regional Inv.</th>
+      <th class="r">Net Need</th>
     </tr></thead><tbody>`;
 
   results.forEach(r => {
-    // regionData already only contains REGIONS entries (North/South/West)
+    // regionData only ever contains North, South, West — no duplicates
     r.regionData.forEach(rd => {
       const nc = rd.netReq > 0 ? 'color:var(--yellow)' : 'color:var(--text3)';
       html += `<tr>
         <td style="color:var(--hi2)">${r.product}</td>
         <td>${rd.region}</td>
-        <td class="num">${rd.soldQty > 0 ? rd.soldQty : '—'}</td>
-        <td class="num">${rd.forecast.toFixed(1)}</td>
-        <td class="num">${rd.targetStock.toFixed(0)}</td>
-        <td class="num">${rd.regionInv}</td>
-        <td class="num" style="${nc}">${rd.netReq > 0 ? Math.ceil(rd.netReq) : '—'}</td>
+        <td class="r">${rd.sold > 0 ? rd.sold : '—'}</td>
+        <td class="r">${rd.forecast.toFixed(1)}</td>
+        <td class="r">${Math.ceil(rd.target)}</td>
+        <td class="r">${rd.regInv}</td>
+        <td class="r" style="${nc}">${rd.netReq > 0 ? Math.ceil(rd.netReq) : '—'}</td>
       </tr>`;
     });
   });
   html += `</tbody></table></div></div>`;
 
-  // Hub Inventory Summary
+  // ── Hub Inventory Summary
   html += `<div class="card anim" style="animation-delay:.18s">
-    <div class="card-head"><div class="dot" style="background:var(--green)"></div>HUB INVENTORY SUMMARY</div>
-    <div class="card-body"><table>
+    <div class="card-hd"><div class="dot" style="background:var(--green)"></div>HUB INVENTORY SUMMARY</div>
+    <div class="card-bd"><table>
     <thead><tr>
       <th>Product</th>
-      <th class="num">Hub Stock</th>
-      <th class="num">Buffer</th>
-      <th class="num">Available</th>
-      <th class="num">After Transfers</th>
+      <th class="r">Hub Stock</th>
+      <th class="r">Buffer</th>
+      <th class="r">Available</th>
+      <th class="r">After Transfers</th>
       <th>Health</th>
     </tr></thead><tbody>`;
 
   results.forEach(r => {
-    const hPct = r.hubStock > 0 ? r.hubRemaining / r.hubStock : 0;
-    const hCls = hPct > 0.4 ? 'hg' : hPct > 0.15 ? 'hy' : 'hr';
-    const hLbl = hPct > 0.4
-      ? '<span style="color:var(--grn2)">SUFFICIENT</span>'
-      : hPct > 0.15
-        ? '<span style="color:var(--yellow)">MODERATE</span>'
-        : '<span style="color:var(--red)">STOCKOUT RISK</span>';
-    const remColor = r.hubRemaining < 0 ? 'color:var(--red)' : r.hubRemaining < c.buffer ? 'color:var(--yellow)' : '';
+    const hp  = r.hubStock > 0 ? r.hubAfter / r.hubStock : 0;
+    const hdc = hp > 0.4 ? 'hg' : hp > 0.15 ? 'hy' : 'hr';
+    const hlbl= hp > 0.4
+      ? `<span style="color:var(--grn2)">SUFFICIENT</span>`
+      : hp > 0.15
+        ? `<span style="color:var(--yellow)">MODERATE</span>`
+        : `<span style="color:var(--red)">STOCKOUT RISK</span>`;
+    const rmc = r.hubAfter < 0 ? 'color:var(--red)' : r.hubAfter < c.buffer ? 'color:var(--yellow)' : '';
     html += `<tr>
       <td style="color:var(--hi2)">${r.product}</td>
-      <td class="num">${r.hubStock}</td>
-      <td class="num" style="color:var(--text3)">${c.buffer}</td>
-      <td class="num">${r.hubAvailable}</td>
-      <td class="num" style="${remColor}">${r.hubRemaining}</td>
-      <td><span class="hdot ${hCls}" style="vertical-align:middle;margin-right:6px"></span>${hLbl}</td>
+      <td class="r">${r.hubStock}</td>
+      <td class="r" style="color:var(--text3)">${c.buffer}</td>
+      <td class="r">${r.hubAvail}</td>
+      <td class="r" style="${rmc}">${r.hubAfter}</td>
+      <td><span class="hdot ${hdc}" style="vertical-align:middle;margin-right:6px"></span>${hlbl}</td>
     </tr>`;
   });
   html += `</tbody></table></div></div>`;
 
   html += `</div>`; // end two-col
 
-  // ══════════════════════════════════════════════════════════════
-  // DEBUG SECTION
-  // Shows normalized inventory per product: HUB / North / South / West
-  // This confirms the mapping fix is working correctly.
-  // Can be hidden in production by removing or collapsing.
-  // ══════════════════════════════════════════════════════════════
-  html += `<div class="debug-panel anim" style="animation-delay:.22s">
-    <div class="debug-head" onclick="toggleDebug(this)">
+  // ══════════════════════════════════════════════════════════════════
+  // DEBUG PANEL
+  // Shows normalized inventory (HUB/North/South/West) per product.
+  // Confirms that 03/03N/03S/03W codes were mapped correctly.
+  // Collapsed by default — click header to expand.
+  // ══════════════════════════════════════════════════════════════════
+  html += `<div class="dbg anim" style="animation-delay:.21s">
+    <div class="dbg-hd" onclick="this.nextElementSibling.classList.toggle('open');
+      this.querySelector('.darr').textContent = this.nextElementSibling.classList.contains('open') ? '▼' : '▶'">
       <span>🔧 DEBUG — NORMALIZED INVENTORY (click to expand)</span>
-      <span id="debugArrow">▶</span>
+      <span class="darr">▶</span>
     </div>
-    <div class="debug-body" id="debugBody">
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px;letter-spacing:.06em">
-        All location codes (03, 03N, 03S, 03W) have been mapped to canonical names.
-        This table shows what the recommendation engine sees.
+    <div class="dbg-bd">
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:10px;line-height:2">
+        Inventory after normalization: 03→HUB · 03N→North · 03S→South · 03W→West<br>
+        Available qty = Stock − Reserved &nbsp;|&nbsp; Values shown are what the engine uses.
       </div>
-      <div class="debug-grid">`;
+      <div class="dbg-grid">`;
 
   results.forEach(r => {
-    html += `<div class="debug-item">
-      <div class="debug-prod">${r.product}</div>
-      ${['HUB',...REGIONS].map(loc => `
-        <div class="debug-loc">
-          <span class="loc-k">${loc}</span>
-          <span style="color:var(--text)">${getInventory(r.product, loc)}</span>
+    html += `<div class="dbg-item">
+      <div class="dbg-prod">${r.product}</div>
+      ${ALL_LOCS.map(loc => `
+        <div class="dbg-row">
+          <span class="dk">${loc}</span>
+          <span style="color:${getInv(r.product,loc) > 0 ? 'var(--text)' : 'var(--text3)'}">${getInv(r.product, loc)}</span>
         </div>`).join('')}
     </div>`;
   });
 
   html += `</div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:10px">
-        Sales data loaded: ${Object.keys(sales).length > 0 ? Object.keys(sales).join(', ') : 'none'}
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:10px;line-height:2">
+        Products: ${results.map(r=>r.product).join(' · ') || 'none'}&nbsp;&nbsp;|&nbsp;&nbsp;
+        Mode: ${mode.toUpperCase()}&nbsp;&nbsp;|&nbsp;&nbsp;
+        Sales rounds loaded: ${Object.keys(salesHistory).length}
       </div>
     </div>
   </div>`;
 
-  content.innerHTML = html;
-  updateValDisplay();
+  renderContent(html);
+  renderValDisplay();
 }
 
-// ══════════════════════════════════════════════════════════════════
-// HELPERS
-// ══════════════════════════════════════════════════════════════════
-function showAlert(msg) {
-  const content = document.getElementById('mainContent');
-  document.getElementById('emptyState').style.display = 'none';
-  content.innerHTML = `<div class="alert-banner anim">${msg}</div>`;
+// ══════════════════════════════════════════════════════════════════════
+// RENDER HELPER
+// ══════════════════════════════════════════════════════════════════════
+function renderContent(html) {
+  const el = document.getElementById('emptyState');
+  if (el) el.style.display = 'none';
+  document.getElementById('mainContent').innerHTML = html;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// ADVANCED SETTINGS TOGGLE
+// ══════════════════════════════════════════════════════════════════════
 function toggleAdv() {
-  document.getElementById('advPanel').classList.toggle('open');
-}
-
-function toggleDebug(header) {
-  const body  = document.getElementById('debugBody');
-  const arrow = document.getElementById('debugArrow');
-  body.classList.toggle('open');
-  arrow.textContent = body.classList.contains('open') ? '▼' : '▶';
+  document.getElementById('advBody').classList.toggle('open');
 }
 </script>
 </body>
