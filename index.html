@@ -1,1514 +1,972 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ERP Logistics Dashboard</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;500;600;700&family=Barlow:wght@300;400;500&display=swap');
+import { useState, useCallback, useMemo } from "react";
 
-  :root {
-    --bg0: #09090f;
-    --bg1: #0f101a;
-    --bg2: #141620;
-    --bg3: #1a1d2e;
-    --bg4: #21253a;
-    --border: #2a2f4a;
-    --border2: #353b5a;
-    --text: #c8cfe0;
-    --text2: #7a829e;
-    --text3: #454e6a;
-    --accent: #00d4ff;
-    --accent2: #0094b3;
-    --green: #00e5a0;
-    --green2: #00a370;
-    --red: #ff4560;
-    --red2: #b32040;
-    --orange: #ffaa00;
-    --orange2: #b37700;
-    --purple: #9d7aff;
-    --mono: 'Share Tech Mono', monospace;
-    --head: 'Barlow Condensed', sans-serif;
-    --body: 'Barlow', sans-serif;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg0);
-    color: var(--text);
-    font-family: var(--body);
-    font-size: 13px;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* SCANLINE OVERLAY */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-    pointer-events: none;
-    z-index: 9999;
-  }
-
-  /* HEADER */
-  #header {
-    background: var(--bg1);
-    border-bottom: 1px solid var(--border);
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    min-height: 52px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 20px rgba(0,0,0,0.5);
-  }
-  .logo {
-    font-family: var(--head);
-    font-weight: 700;
-    font-size: 18px;
-    letter-spacing: 2px;
-    color: var(--accent);
-    text-transform: uppercase;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .logo-dot { width:8px; height:8px; background:var(--accent); border-radius:50%; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,212,255,0.4)} 50%{opacity:0.7;box-shadow:0 0 0 6px rgba(0,212,255,0)} }
-
-  .header-sep { flex:1; }
-  .header-ctrl { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-
-  .mode-toggle {
-    display: flex;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .mode-btn {
-    padding: 5px 12px;
-    font-family: var(--head);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    background: none;
-    border: none;
-    color: var(--text2);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .mode-btn.active { background: var(--accent2); color: #fff; }
-
-  .plan-mode {
-    display: flex;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .plan-btn {
-    padding: 5px 12px;
-    font-family: var(--head);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    background: none;
-    border: none;
-    color: var(--text2);
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .plan-btn.active { background: var(--purple); color: #fff; }
-
-  .btn {
-    padding: 5px 14px;
-    font-family: var(--head);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    background: var(--bg3);
-    color: var(--text);
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .btn:hover { border-color: var(--accent); color: var(--accent); }
-  .btn.danger { border-color: var(--red2); color: var(--red); }
-  .btn.danger:hover { background: var(--red2); color: #fff; }
-  .btn.success { border-color: var(--green2); color: var(--green); }
-  .btn.primary { background: var(--accent2); border-color: var(--accent); color: #fff; }
-
-  .file-btn {
-    position: relative;
-    overflow: hidden;
-    display: inline-block;
-  }
-  .file-btn input[type=file] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    font-size: 0;
-  }
-
-  /* TABS NAV (Planning / Live) */
-  #tabs-nav {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--border);
-    padding: 0 16px;
-    background: var(--bg1);
-  }
-  .tab-nav-btn {
-    padding: 10px 20px;
-    font-family: var(--head);
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    background: none;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: var(--text2);
-    cursor: pointer;
-    margin-bottom: -1px;
-    transition: all 0.2s;
-  }
-  .tab-nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-
-  /* MAIN */
-  #main { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; max-width: 1400px; margin: 0 auto; }
-
-  /* SECTION */
-  .section {
-    background: var(--bg1);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .section-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    user-select: none;
-  }
-  .section-title {
-    font-family: var(--head);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent);
-    flex: 1;
-  }
-  .section-toggle { font-size: 10px; color: var(--text3); transition: transform 0.2s; }
-  .section.collapsed .section-toggle { transform: rotate(-90deg); }
-  .section.collapsed .section-body { display: none; }
-  .section-body { padding: 10px 12px; }
-
-  /* TABLES */
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 12px;
-  }
-  .data-table th {
-    font-family: var(--head);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text2);
-    padding: 5px 8px;
-    border-bottom: 1px solid var(--border);
-    text-align: right;
-    background: var(--bg2);
-    white-space: nowrap;
-  }
-  .data-table th:first-child { text-align: left; }
-  .data-table td {
-    padding: 4px 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    text-align: right;
-    vertical-align: middle;
-  }
-  .data-table td:first-child { text-align: left; color: var(--text); font-weight: 500; }
-  .data-table tr:hover td { background: rgba(0,212,255,0.03); }
-
-  .prod-code { color: var(--accent); font-weight: bold; }
-  .prod-name { color: var(--text2); font-size: 11px; margin-left: 4px; }
-
-  /* EDITABLE CELLS */
-  .editable {
-    background: transparent;
-    border: none;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    text-align: right;
-    width: 72px;
-    padding: 2px 4px;
-    border-radius: 3px;
-    transition: background 0.15s;
-  }
-  .editable:focus {
-    outline: none;
-    background: var(--bg4);
-    border: 1px solid var(--accent2);
-  }
-
-  /* DELTA INDICATORS */
-  .delta-pos { color: var(--green); }
-  .delta-neg { color: var(--red); }
-  .delta-zero { color: var(--text3); }
-
-  /* STATUS BADGES */
-  .badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 3px;
-    font-family: var(--head);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-  .badge-ok { background: rgba(0,229,160,0.15); color: var(--green); border: 1px solid rgba(0,229,160,0.3); }
-  .badge-low { background: rgba(255,170,0,0.15); color: var(--orange); border: 1px solid rgba(255,170,0,0.3); }
-  .badge-insuf { background: rgba(255,69,96,0.15); color: var(--red); border: 1px solid rgba(255,69,96,0.3); }
-  .badge-due { background: rgba(157,122,255,0.15); color: var(--purple); border: 1px solid rgba(157,122,255,0.3); }
-  .badge-hold { background: rgba(122,130,158,0.15); color: var(--text2); border: 1px solid var(--border); }
-  .badge-priority { background: rgba(255,69,96,0.2); color: var(--red); border: 1px solid var(--red2); }
-
-  /* REPLENISHMENT PANEL */
-  .repl-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 6px;
-  }
-  .repl-item {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 6px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  .repl-code { font-family: var(--head); font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--accent); }
-  .repl-name { font-size: 10px; color: var(--text2); }
-  .repl-qty { font-family: var(--mono); font-size: 15px; color: var(--green); margin-top: 2px; }
-
-  /* DAYS INPUT */
-  .days-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-  }
-  .days-label { font-family: var(--head); font-size: 11px; letter-spacing: 1px; color: var(--text2); text-transform: uppercase; }
-  .days-input {
-    width: 70px;
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 4px 8px;
-    text-align: center;
-  }
-  .days-input:focus { outline: none; border-color: var(--accent); }
-  .days-status { font-family: var(--head); font-size: 11px; font-weight: 600; }
-
-  /* VALUATION */
-  .val-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-  .val-select {
-    background: var(--bg3);
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    color: var(--text);
-    font-family: var(--head);
-    font-size: 12px;
-    padding: 5px 10px;
-  }
-  .val-select:focus { outline: none; border-color: var(--accent); }
-
-  /* RECOMMEND TABLE */
-  .rec-table th { background: var(--bg3); }
-  .send-val { color: var(--accent); font-weight: bold; }
-  .hold-val { color: var(--text3); }
-
-  /* STATUS ROW COLORS */
-  tr.rec-ok td { }
-  tr.rec-low td:first-child { border-left: 2px solid var(--orange); }
-  tr.rec-insuf td:first-child { border-left: 2px solid var(--red); }
-
-  /* LIVE VIEW */
-  #live-view { display: none; padding: 12px 16px; max-width: 1400px; margin: 0 auto; }
-  #live-view.active { display: block; }
-  #planning-view.hidden { display: none; }
-
-  .live-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  @media (max-width: 700px) {
-    .live-grid { grid-template-columns: 1fr; }
-    .header-ctrl { gap: 5px; }
-    .logo { font-size: 14px; }
-  }
-
-  .live-section {
-    background: var(--bg1);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .live-section-head {
-    padding: 7px 12px;
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    font-family: var(--head);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-  .live-section-body { padding: 8px 10px; }
-
-  /* TOAST */
-  #toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--bg3);
-    border: 1px solid var(--green2);
-    color: var(--green);
-    padding: 8px 16px;
-    border-radius: 4px;
-    font-family: var(--head);
-    font-size: 12px;
-    letter-spacing: 1px;
-    z-index: 9999;
-    display: none;
-    animation: fadeIn 0.2s;
-  }
-  #toast.error { border-color: var(--red2); color: var(--red); }
-  @keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
-
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg1); }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-  .label { font-family: var(--head); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); }
-
-  .hub-warn {
-    background: rgba(255,170,0,0.08);
-    border: 1px solid rgba(255,170,0,0.2);
-    border-radius: 4px;
-    padding: 6px 10px;
-    font-family: var(--head);
-    font-size: 11px;
-    color: var(--orange);
-    display: none;
-    margin-top: 6px;
-    letter-spacing: 0.5px;
-  }
-
-  .table-wrap { overflow-x: auto; }
-
-  /* small save confirm */
-  .save-indicator {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--text3);
-    margin-left: 4px;
-  }
-
-  select option { background: var(--bg3); }
-
-  .apply-btn {
-    padding: 4px 12px;
-    font-family: var(--head);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    border: 1px solid var(--accent2);
-    border-radius: 3px;
-    background: rgba(0,148,179,0.15);
-    color: var(--accent);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .apply-btn:hover { background: var(--accent2); color: #fff; }
-  .apply-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    background: rgba(122,130,158,0.12);
-    color: var(--text3);
-    border-color: var(--border2);
-  }
-  .apply-btn:disabled:hover {
-    background: rgba(122,130,158,0.12);
-    color: var(--text3);
-  }
-
-  .info-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 2px 8px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-  }
-  .info-chip .chip-label { font-family: var(--head); font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); }
-
-  hr.sep { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
-
-  .val-table-wrap { max-height: 300px; overflow-y: auto; }
-</style>
-</head>
-<body>
-
-<!-- HEADER -->
-<div id="header">
-  <div class="logo">
-    <div class="logo-dot"></div>
-    ERP LOGISTICS
-  </div>
-  <div class="header-sep"></div>
-  <div class="header-ctrl">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-      <span class="label">View</span>
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="btn-view-planning" onclick="setView('planning', this)">Planning</button>
-        <button class="mode-btn" id="btn-view-live" onclick="setView('live', this)">Live</button>
-      </div>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-      <span class="label">Mode</span>
-      <div class="plan-toggle plan-mode">
-        <button class="plan-btn active" id="btn-push" onclick="setPlanMode('push')">Push</button>
-        <button class="plan-btn" id="btn-pull" onclick="setPlanMode('pull')">Pull</button>
-      </div>
-    </div>
-    <div class="file-btn">
-      <button class="btn">▲ Sold Report</button>
-      <input type="file" accept=".xlsx,.xls,.csv" onchange="uploadSold(this)">
-    </div>
-    <div class="file-btn">
-      <button class="btn">▲ Valuation</button>
-      <input type="file" accept=".xlsx,.xls" onchange="uploadValuation(this)">
-    </div>
-    <button class="btn success" onclick="saveAll()">Save</button>
-    <span class="save-indicator" id="global-save-time" style="font-size:10px;color:var(--text3);white-space:nowrap;"></span>
-    <button class="btn danger" onclick="resetAll()">Reset</button>
-  </div>
-</div>
-
-<!-- TAB NAV -->
-<div id="tabs-nav" style="display:none">
-</div>
-
-<!-- PLANNING VIEW -->
-<div id="planning-view">
-<div id="main">
-
-  <!-- SECTION 1: Inventory State -->
-  <div class="section" id="sec-inventory">
-    <div class="section-header" onclick="toggleSection('sec-inventory')">
-      <span class="section-title">§1 — Inventory State</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="section-body">
-      <div class="table-wrap">
-        <table class="data-table" id="inv-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>03 Hub</th>
-              <th>03N North</th>
-              <th>03S South</th>
-              <th>03W West</th>
-              <th>Δ Hub</th>
-            </tr>
-          </thead>
-          <tbody id="inv-tbody"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <button class="apply-btn" onclick="applyInventory()">Apply Inventory Updates</button>
-        <span class="save-indicator" id="inv-save-time"></span>
-        <div class="file-btn">
-          <button class="btn" style="font-size:11px;padding:4px 10px;">▲ Inventory Report</button>
-          <input type="file" accept=".xlsx,.xls,.csv" onchange="uploadHubInventory(this)">
-        </div>
-      </div>
-      <div class="hub-warn" id="hub-warn">⚠ Hub inventory is low — replenishment recommended before transfers</div>
-    </div>
-  </div>
-
-  <!-- SECTION 2: Sold Quantities -->
-  <div class="section" id="sec-sold">
-    <div class="section-header" onclick="toggleSection('sec-sold')">
-      <span class="section-title">§2 — Sold Quantity State</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="section-body">
-      <div class="table-wrap">
-        <table class="data-table" id="sold-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>03N Sold</th>
-              <th>03S Sold</th>
-              <th>03W Sold</th>
-            </tr>
-          </thead>
-          <tbody id="sold-tbody"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
-        <button class="apply-btn" onclick="applySold()">Apply Sold Updates</button>
-        <span class="save-indicator" id="sold-save-time"></span>
-      </div>
-      <p style="margin-top:6px;font-size:11px;color:var(--text3);">Values replace previous — do not accumulate. Upload a sold report via the header button.</p>
-    </div>
-  </div>
-
-  <!-- SECTION 3: Replenishment Panel -->
-  <div class="section" id="sec-repl">
-    <div class="section-header" onclick="toggleSection('sec-repl')">
-      <span class="section-title">§3 — Replenishment Schedule</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="section-body">
-      <p style="font-size:11px;color:var(--text2);margin-bottom:8px;">Hub <span style="color:var(--accent)">03</span> receives fixed stock every <span style="color:var(--purple)">5 days</span>:</p>
-      <div class="repl-grid" id="repl-grid"></div>
-      <div class="days-row">
-        <span class="days-label">Days since last replenishment:</span>
-        <input class="days-input" type="number" min="0" max="10" id="days-input" value="0" oninput="updateDaysStatus()">
-        <span class="days-status" id="days-status"></span>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <button class="apply-btn" id="post-repl-btn" onclick="postReplenishment()" disabled>Post Replenishment</button>
-        <span class="save-indicator" id="repl-save-time"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- SECTION 4: Valuation History -->
-  <div class="section" id="sec-val">
-    <div class="section-header" onclick="toggleSection('sec-val')">
-      <span class="section-title">§4 — Valuation History</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="section-body">
-      <div class="val-controls">
-        <span class="label">Valuation Round:</span>
-        <select class="val-select" id="val-round-select" onchange="renderValuation()">
-          <option value="">— Select Round —</option>
-        </select>
-        <span class="save-indicator" id="val-save-info"></span>
-      </div>
-      <div class="val-table-wrap">
-        <div id="val-display"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- SECTION 5: Transfer Recommendations -->
-  <div class="section" id="sec-rec">
-    <div class="section-header" onclick="toggleSection('sec-rec')">
-      <span class="section-title">§5 — Transfer Recommendations</span>
-      <span class="section-toggle">▼</span>
-    </div>
-    <div class="section-body">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
-        <span class="info-chip"><span class="chip-label">Mode</span><span id="rec-mode-label">PUSH</span></span>
-        <span class="info-chip"><span class="chip-label">Safety Factor</span><span id="rec-sf">1.2</span></span>
-        <button class="apply-btn" onclick="computeRecommendations()">↻ Recalculate</button>
-      </div>
-      <div class="table-wrap">
-        <table class="data-table rec-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Hub Stock</th>
-              <th>Send → 03N</th>
-              <th>Send → 03S</th>
-              <th>Send → 03W</th>
-              <th>Total Out</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="rec-tbody"></tbody>
-        </table>
-      </div>
-      <div class="hub-warn" id="rec-hub-warn">⚠ Hub stock insufficient for all recommended transfers. Higher-demand regions prioritized.</div>
-    </div>
-  </div>
-
-</div><!-- /main -->
-</div><!-- /planning-view -->
-
-<!-- LIVE VIEW -->
-<div id="live-view">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
-    <span class="info-chip"><span class="chip-label">Planning Mode</span><span id="live-mode-label">PUSH</span></span>
-    <span class="info-chip"><span class="chip-label">Hub 03 Total</span><span id="live-hub-total">—</span></span>
-    <button class="apply-btn" onclick="computeRecommendations(); renderLive();">↻ Refresh</button>
-  </div>
-  <div class="live-grid">
-    <div class="live-section">
-      <div class="live-section-head">Quick Hub Inventory Update</div>
-      <div class="live-section-body">
-        <div class="table-wrap">
-          <table class="data-table" id="live-hub-table">
-            <thead>
-              <tr><th>Product</th><th>Current Hub</th><th>New Value</th></tr>
-            </thead>
-            <tbody id="live-hub-tbody"></tbody>
-          </table>
-        </div>
-        <div style="margin-top:8px;">
-          <button class="apply-btn" onclick="applyLiveHub()">Apply Hub Update</button>
-        </div>
-      </div>
-    </div>
-    <div class="live-section">
-      <div class="live-section-head">Quick Sold Update</div>
-      <div class="live-section-body">
-        <div class="table-wrap">
-          <table class="data-table" id="live-sold-table">
-            <thead>
-              <tr><th>Product</th><th>03N</th><th>03S</th><th>03W</th></tr>
-            </thead>
-            <tbody id="live-sold-tbody"></tbody>
-          </table>
-        </div>
-        <div style="margin-top:8px;">
-          <button class="apply-btn" onclick="applyLiveSold()">Apply Sold Update</button>
-        </div>
-      </div>
-    </div>
-    <div class="live-section" style="grid-column:1/-1">
-      <div class="live-section-head">Transfer Recommendations</div>
-      <div class="live-section-body">
-        <div class="table-wrap">
-          <table class="data-table rec-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Hub Stock</th>
-                <th>→ 03N</th>
-                <th>→ 03S</th>
-                <th>→ 03W</th>
-                <th>Total Out</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="live-rec-tbody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-</div><!-- /live-view -->
-
-<!-- TOAST -->
-<div id="toast"></div>
-
-<script>
-// ============================================================
-// DATA DEFINITIONS
-// ============================================================
-const PRODUCTS = [
-  { code: 'T01', name: 'Milk' },
-  { code: 'T02', name: 'Cream' },
-  { code: 'T03', name: 'Yoghurt' },
-  { code: 'T04', name: 'Cheese' },
-  { code: 'T05', name: 'Butter' },
-  { code: 'T06', name: 'Ice Cream' },
-];
-const WAREHOUSES = ['03N','03S','03W'];
-const HUB = '03';
-const REPLENISHMENT = { T01:950, T02:300, T03:700, T04:350, T05:400, T06:300 };
-const REPLENISHMENT_DAYS = 5;
-const SAFETY_FACTOR = 1.2;
-
-// ============================================================
-// STATE
-// ============================================================
-let state = {
-  planMode: 'push', // 'push' | 'pull'
-  inventory: {}, // { T01: { '03': 0, '03N': 0, '03S': 0, '03W': 0, prevHub: 0 }, ... }
-  sold: {},       // { T01: { '03N': 0, '03S': 0, '03W': 0 }, ... }
-  valuation: {},  // { 'Round 1': [...rows], ... }
-  daysSinceRepl: 0,
-  savedAt: null,
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const DEFAULT_CONFIG = {
+  shippingDelay: 2,
+  hubBuffer: 500,
+  safetyStock: 100,
+  minBatch: 50,
+  forecastWindow: 3,
+  mode: "pull",
 };
 
-function initState() {
-  PRODUCTS.forEach(p => {
-    state.inventory[p.code] = { '03':0, '03N':0, '03S':0, '03W':0, prevHub:0 };
-    state.sold[p.code] = { '03N':0, '03S':0, '03W':0 };
+const REGIONS = ["North", "South", "East", "West"];
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function normalizeMaterial(code) {
+  if (!code) return "";
+  return String(code).replace(/^[A-Z]+-/, "").trim().toUpperCase();
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split("\n").filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map((h) => h.trim());
+  return lines.slice(1).map((line) => {
+    const vals = line.split(",").map((v) => v.trim());
+    return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? ""]));
   });
 }
 
-// ============================================================
-// LOCAL STORAGE
-// ============================================================
-function saveAll() {
-  state.savedAt = new Date().toISOString();
-  localStorage.setItem('erp_state', JSON.stringify(state));
-  const t = timeNow();
-  const el = document.getElementById('global-save-time');
-  if (el) el.textContent = 'Saved ' + t;
-  showToast('State saved — ' + t);
+function movingAverage(history, window) {
+  if (!history || history.length === 0) return 0;
+  const slice = history.slice(-window);
+  return slice.reduce((a, b) => a + b, 0) / slice.length;
 }
 
-function loadAll() {
-  const raw = localStorage.getItem('erp_state');
-  if (raw) {
+// ─── INITIAL STATE ────────────────────────────────────────────────────────────
+const DEMO_SALES = `Area,Material Number,Quantity
+North,BB-T01,120
+North,BB-T02,80
+South,BB-T01,200
+South,BB-T03,60
+East,BB-T01,150
+East,BB-T02,110
+West,BB-T02,90
+West,BB-T03,140`;
+
+// ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
+export default function ERPTool1() {
+  const [config, setConfig] = useState(DEFAULT_CONFIG);
+  const [currentRound, setCurrentRound] = useState(1);
+
+  // Raw CSV inputs
+  const [salesCSV, setSalesCSV] = useState(DEMO_SALES);
+  const [csvError, setCsvError] = useState("");
+
+  // Shadow inventory: { [material]: { hub: number, regions: { [region]: number } } }
+  const [shadowInventory, setShadowInventory] = useState({});
+
+  // Pipeline: array of { id, round, material, region, qty, arrivalRound }
+  const [pipeline, setPipeline] = useState([]);
+
+  // Transfer history: array of { round, material, region, qty, cost }
+  const [transferHistory, setTransferHistory] = useState([]);
+
+  // Demand history: { [material]: { [region]: number[] } }
+  const [demandHistory, setDemandHistory] = useState({});
+
+  // Reconciliation overrides
+  const [reconcileInputs, setReconcileInputs] = useState({});
+  const [reconcileMsg, setReconcileMsg] = useState("");
+
+  // UI state
+  const [activeTab, setActiveTab] = useState("recommend");
+  const [pendingTransfers, setPendingTransfers] = useState({});
+
+  // ── PARSE SALES DATA ─────────────────────────────────────────────────────
+  const salesData = useMemo(() => {
     try {
-      const loaded = JSON.parse(raw);
-      // merge carefully
-      state.planMode = loaded.planMode || 'push';
-      state.daysSinceRepl = loaded.daysSinceRepl || 0;
-      state.valuation = loaded.valuation || {};
-      state.savedAt = loaded.savedAt || null;
-      // inventory & sold
-      PRODUCTS.forEach(p => {
-        if (loaded.inventory && loaded.inventory[p.code]) {
-          state.inventory[p.code] = { ...state.inventory[p.code], ...loaded.inventory[p.code] };
+      const rows = parseCSV(salesCSV);
+      const result = {};
+      for (const row of rows) {
+        const mat = normalizeMaterial(row["Material Number"]);
+        const region = row["Area"]?.trim();
+        const qty = parseFloat(row["Quantity"]) || 0;
+        if (!mat || !region) continue;
+        if (!result[mat]) result[mat] = {};
+        result[mat][region] = (result[mat][region] || 0) + qty;
+      }
+      setCsvError("");
+      return result;
+    } catch (e) {
+      setCsvError("CSV parse error: " + e.message);
+      return {};
+    }
+  }, [salesCSV]);
+
+  const allMaterials = useMemo(() => Object.keys(salesData).sort(), [salesData]);
+
+  // ── APPLY SALES ROUND ────────────────────────────────────────────────────
+  const applySalesRound = useCallback(() => {
+    // Update demand history
+    setDemandHistory((prev) => {
+      const next = { ...prev };
+      for (const mat of Object.keys(salesData)) {
+        if (!next[mat]) next[mat] = {};
+        for (const region of Object.keys(salesData[mat])) {
+          if (!next[mat][region]) next[mat][region] = [];
+          next[mat][region] = [...next[mat][region], salesData[mat][region]];
         }
-        if (loaded.sold && loaded.sold[p.code]) {
-          state.sold[p.code] = { ...state.sold[p.code], ...loaded.sold[p.code] };
+      }
+      return next;
+    });
+
+    // Deduct sales from shadow regional inventory
+    setShadowInventory((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      for (const mat of Object.keys(salesData)) {
+        if (!next[mat]) next[mat] = { hub: 0, regions: {} };
+        for (const region of Object.keys(salesData[mat])) {
+          if (!next[mat].regions[region]) next[mat].regions[region] = 0;
+          next[mat].regions[region] = Math.max(
+            0,
+            next[mat].regions[region] - salesData[mat][region]
+          );
         }
+      }
+      return next;
+    });
+
+    // Arrive pipeline shipments
+    setPipeline((prev) => {
+      const arriving = prev.filter((s) => s.arrivalRound === currentRound);
+      const remaining = prev.filter((s) => s.arrivalRound !== currentRound);
+      setShadowInventory((inv) => {
+        const next = JSON.parse(JSON.stringify(inv));
+        for (const ship of arriving) {
+          if (!next[ship.material]) next[ship.material] = { hub: 0, regions: {} };
+          if (!next[ship.material].regions[ship.region])
+            next[ship.material].regions[ship.region] = 0;
+          next[ship.material].regions[ship.region] += ship.qty;
+        }
+        return next;
       });
-      // Restore saved-at display
-      if (state.savedAt) {
-        const d = new Date(state.savedAt);
-        const display = d.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-        const el = document.getElementById('global-save-time');
-        if (el) el.textContent = 'Saved ' + display;
-      }
-    } catch(e) { console.warn('Failed to load state', e); }
-  }
-}
-
-function resetAll() {
-  if (!confirm('Reset all data? This cannot be undone.')) return;
-  // 1. Clear localStorage
-  localStorage.removeItem('erp_state');
-  // 2. Reinitialise state
-  initState();
-  // 3-5. Set defaults
-  state.planMode = 'push';
-  state.daysSinceRepl = 0;
-  state.valuation = {};
-  state.savedAt = null;
-  // 6. Reset plan mode buttons
-  document.getElementById('btn-push').classList.add('active');
-  document.getElementById('btn-pull').classList.remove('active');
-  document.getElementById('rec-mode-label').textContent = 'PUSH';
-  document.getElementById('live-mode-label').textContent = 'PUSH';
-  document.getElementById('rec-sf').textContent = '1.2';
-  // 7. Switch to Planning view explicitly
-  setView('planning', document.getElementById('btn-view-planning'));
-  // 8. Reset days input
-  document.getElementById('days-input').value = 0;
-  // 9. Clear stale UI text
-  document.getElementById('inv-save-time').textContent = '';
-  document.getElementById('sold-save-time').textContent = '';
-  document.getElementById('val-save-info').textContent = '';
-  document.getElementById('val-display').innerHTML = '';
-  document.getElementById('val-round-select').innerHTML = '<option value="">— Select Round —</option>';
-  document.getElementById('hub-warn').style.display = 'none';
-  document.getElementById('rec-hub-warn').style.display = 'none';
-  const gst = document.getElementById('global-save-time');
-  if (gst) gst.textContent = '';
-  // 10. Re-render everything
-  renderAll();
-  showToast('Reset complete');
-}
-
-// ============================================================
-// VIEW SWITCHING
-// ============================================================
-let currentView = 'planning';
-
-function setView(v, btn) {
-  currentView = v;
-  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  if (v === 'planning') {
-    document.getElementById('planning-view').classList.remove('hidden');
-    document.getElementById('live-view').classList.remove('active');
-  } else {
-    document.getElementById('planning-view').classList.add('hidden');
-    document.getElementById('live-view').classList.add('active');
-    renderLive();
-  }
-}
-
-function setPlanMode(m) {
-  state.planMode = m;
-  document.getElementById('btn-push').classList.toggle('active', m === 'push');
-  document.getElementById('btn-pull').classList.toggle('active', m === 'pull');
-  document.getElementById('rec-mode-label').textContent = m.toUpperCase();
-  document.getElementById('live-mode-label').textContent = m.toUpperCase();
-  document.getElementById('rec-sf').textContent = m === 'push' ? '1.2' : '1.0';
-  computeRecommendations();
-}
-
-function toggleSection(id) {
-  document.getElementById(id).classList.toggle('collapsed');
-}
-
-// ============================================================
-// RENDER INVENTORY TABLE
-// ============================================================
-function renderInventory() {
-  const tbody = document.getElementById('inv-tbody');
-  tbody.innerHTML = '';
-  let anyLow = false;
-  PRODUCTS.forEach(p => {
-    const inv = state.inventory[p.code];
-    const delta = inv['03'] - (inv.prevHub || 0);
-    const deltaClass = delta > 0 ? 'delta-pos' : delta < 0 ? 'delta-neg' : 'delta-zero';
-    const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
-    const tr = document.createElement('tr');
-    if (inv['03'] < 100) anyLow = true;
-    tr.innerHTML = `
-      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
-      <td><input class="editable" type="number" min="0" id="inv-hub-${p.code}" value="${inv['03']}" style="width:80px"></td>
-      <td><input class="editable" type="number" min="0" id="inv-03N-${p.code}" value="${inv['03N']}" style="width:72px"></td>
-      <td><input class="editable" type="number" min="0" id="inv-03S-${p.code}" value="${inv['03S']}" style="width:72px"></td>
-      <td><input class="editable" type="number" min="0" id="inv-03W-${p.code}" value="${inv['03W']}" style="width:72px"></td>
-      <td class="${deltaClass}" style="font-family:var(--mono)">${deltaStr}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  document.getElementById('hub-warn').style.display = anyLow ? 'block' : 'none';
-}
-
-function applyInventory() {
-  PRODUCTS.forEach(p => {
-    const newHub = parseInt(document.getElementById(`inv-hub-${p.code}`).value) || 0;
-    state.inventory[p.code].prevHub = state.inventory[p.code]['03'];
-    state.inventory[p.code]['03'] = newHub;
-    state.inventory[p.code]['03N'] = parseInt(document.getElementById(`inv-03N-${p.code}`).value) || 0;
-    state.inventory[p.code]['03S'] = parseInt(document.getElementById(`inv-03S-${p.code}`).value) || 0;
-    state.inventory[p.code]['03W'] = parseInt(document.getElementById(`inv-03W-${p.code}`).value) || 0;
-  });
-  renderInventory();
-  computeRecommendations();
-  document.getElementById('inv-save-time').textContent = 'Updated ' + timeNow();
-  showToast('Inventory updated');
-}
-
-// ============================================================
-// RENDER SOLD TABLE
-// ============================================================
-function renderSold() {
-  const tbody = document.getElementById('sold-tbody');
-  tbody.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const s = state.sold[p.code];
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
-      <td><input class="editable" type="number" min="0" id="sold-03N-${p.code}" value="${s['03N']}"></td>
-      <td><input class="editable" type="number" min="0" id="sold-03S-${p.code}" value="${s['03S']}"></td>
-      <td><input class="editable" type="number" min="0" id="sold-03W-${p.code}" value="${s['03W']}"></td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function applySold() {
-  PRODUCTS.forEach(p => {
-    WAREHOUSES.forEach(w => {
-      state.sold[p.code][w] = parseInt(document.getElementById(`sold-${w}-${p.code}`).value) || 0;
-    });
-  });
-  computeRecommendations();
-  document.getElementById('sold-save-time').textContent = 'Updated ' + timeNow();
-  showToast('Sold quantities updated (replaced)');
-}
-
-// ============================================================
-// REPLENISHMENT PANEL
-// ============================================================
-function renderReplenishment() {
-  const grid = document.getElementById('repl-grid');
-  grid.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const qty = REPLENISHMENT[p.code];
-    const div = document.createElement('div');
-    div.className = 'repl-item';
-    div.innerHTML = `<span class="repl-code">${p.code}</span><span class="repl-name">${p.name}</span><span class="repl-qty">+${qty}</span>`;
-    grid.appendChild(div);
-  });
-  document.getElementById('days-input').value = state.daysSinceRepl;
-  updateDaysStatus();
-}
-
-function updateDaysStatus() {
-  const d = parseInt(document.getElementById('days-input').value) || 0;
-  state.daysSinceRepl = d;
-  const rem = REPLENISHMENT_DAYS - d;
-  const el = document.getElementById('days-status');
-  const btn = document.getElementById('post-repl-btn');
-
-  if (rem <= 0) {
-    el.textContent = '⚡ Replenishment overdue or due now';
-    el.style.color = 'var(--red)';
-    if (btn) btn.disabled = false;
-  } else if (rem === 1) {
-    el.textContent = 'Due tomorrow';
-    el.style.color = 'var(--orange)';
-    if (btn) btn.disabled = true;
-  } else {
-    el.textContent = `${rem} day(s) until next replenishment`;
-    el.style.color = 'var(--green)';
-    if (btn) btn.disabled = true;
-  }
-  computeRecommendations();
-}
-
-function postReplenishment() {
-  if (state.daysSinceRepl < REPLENISHMENT_DAYS) {
-    showToast(`Replenishment not due yet. ${REPLENISHMENT_DAYS - state.daysSinceRepl} day(s) remaining.`, true);
-    return;
-  }
-  // Preserve prevHub for delta, then add fixed replenishment quantities
-  PRODUCTS.forEach(p => {
-    state.inventory[p.code].prevHub = state.inventory[p.code]['03'];
-    state.inventory[p.code]['03'] += REPLENISHMENT[p.code] || 0;
-  });
-  // Reset cycle counter
-  state.daysSinceRepl = 0;
-  const daysInput = document.getElementById('days-input');
-  if (daysInput) daysInput.value = 0;
-  // Update posted timestamp
-  const replSave = document.getElementById('repl-save-time');
-  if (replSave) replSave.textContent = 'Posted ' + timeNow();
-  // Refresh UI
-  renderInventory();
-  renderReplenishment();
-  computeRecommendations();
-  showToast('Replenishment posted to hub 03');
-}
-
-// ============================================================
-// VALUATION
-// ============================================================
-function renderValuationDropdown() {
-  const sel = document.getElementById('val-round-select');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">— Select Round —</option>';
-  const rounds = Object.keys(state.valuation).sort();
-  rounds.forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r;
-    opt.textContent = r;
-    sel.appendChild(opt);
-  });
-  if (current && state.valuation[current]) sel.value = current;
-  document.getElementById('val-save-info').textContent = rounds.length ? `${rounds.length} round(s) stored` : '';
-}
-
-function renderValuation() {
-  const sel = document.getElementById('val-round-select').value;
-  const disp = document.getElementById('val-display');
-  if (!sel || !state.valuation[sel]) { disp.innerHTML = '<p style="color:var(--text3);font-size:11px">Select a round to view</p>'; return; }
-  const rows = state.valuation[sel];
-  if (!rows || rows.length === 0) { disp.innerHTML = '<p style="color:var(--text3)">No data for this round</p>'; return; }
-  // Build table from rows (array of objects)
-  const keys = Object.keys(rows[0]);
-  let html = '<table class="data-table"><thead><tr>';
-  keys.forEach(k => { html += `<th>${k}</th>`; });
-  html += '</tr></thead><tbody>';
-  rows.forEach(row => {
-    html += '<tr>';
-    keys.forEach(k => { html += `<td>${row[k] ?? ''}</td>`; });
-    html += '</tr>';
-  });
-  html += '</tbody></table>';
-  disp.innerHTML = html;
-}
-
-// ============================================================
-// RECOMMENDATION ENGINE
-// ============================================================
-let lastRec = {};
-
-function computeRecommendations() {
-  const mode = state.planMode;
-  const sf = mode === 'push' ? SAFETY_FACTOR : 1.0;
-  const rem = REPLENISHMENT_DAYS - state.daysSinceRepl;
-  const replSoon = rem <= 1;
-
-  // For each product, compute desired transfer to each warehouse
-  let transfers = {}; // { T01: { '03N': qty, '03S': qty, '03W': qty } }
-  PRODUCTS.forEach(p => {
-    const inv = state.inventory[p.code];
-    const hubStock = inv['03'];
-    transfers[p.code] = {};
-    WAREHOUSES.forEach(w => {
-      const sold = state.sold[p.code][w];
-      const regInv = inv[w];
-      let target, rec;
-      if (mode === 'push') {
-        target = Math.round(sold * sf);
-        rec = Math.max(0, target - regInv);
-      } else {
-        // pull: more conservative, only fill to exact demand
-        target = sold;
-        rec = Math.max(0, target - regInv);
-      }
-      transfers[p.code][w] = rec;
-    });
-  });
-
-  // Hub constraint: per product, check if hub has enough
-  // Priority: highest total demand region first
-  let recResults = {};
-  let anyInsuf = false;
-
-  PRODUCTS.forEach(p => {
-    const inv = state.inventory[p.code];
-    let hubAvail = inv['03'];
-    const rawTransfers = transfers[p.code];
-
-    // Sort warehouses by demand descending
-    const sorted = [...WAREHOUSES].sort((a, b) => state.sold[p.code][b] - state.sold[p.code][a]);
-
-    let allocated = { '03N':0, '03S':0, '03W':0 };
-    let status = 'OK';
-
-    sorted.forEach(w => {
-      const want = rawTransfers[w];
-      if (want <= 0) { allocated[w] = 0; return; }
-      if (hubAvail >= want) {
-        allocated[w] = want;
-        hubAvail -= want;
-      } else if (hubAvail > 0) {
-        allocated[w] = hubAvail;
-        hubAvail = 0;
-        status = 'Hub Low';
-        anyInsuf = true;
-      } else {
-        allocated[w] = 0;
-        status = 'Insufficient Hub Stock';
-        anyInsuf = true;
-      }
+      return remaining;
     });
 
-    if (replSoon && inv['03'] < 200) status = 'Replenishment Due Soon';
+    setCurrentRound((r) => r + 1);
+  }, [salesData, currentRound]);
 
-    recResults[p.code] = { allocated, status, hubStock: inv['03'] };
-  });
+  // ── COMPUTE RECOMMENDATIONS ───────────────────────────────────────────────
+  const recommendations = useMemo(() => {
+    const results = [];
+    for (const mat of allMaterials) {
+      const hubStock = shadowInventory[mat]?.hub ?? 0;
+      const availableAfterBuffer = Math.max(0, hubStock - config.hubBuffer);
 
-  lastRec = recResults;
-  renderRecommendations(recResults);
-  document.getElementById('rec-hub-warn').style.display = anyInsuf ? 'block' : 'none';
-}
+      // Pipeline stock per region
+      const pipelineByRegion = {};
+      for (const ship of pipeline.filter((s) => s.material === mat)) {
+        pipelineByRegion[ship.region] = (pipelineByRegion[ship.region] || 0) + ship.qty;
+      }
 
-function renderRecommendations(rec) {
-  renderRecTable('rec-tbody', rec);
-}
+      // Per-region demand forecast
+      const regionDemands = {};
+      const activeRegions = Object.keys(salesData[mat] || {});
+      for (const region of activeRegions) {
+        const lastDemand = salesData[mat]?.[region] || 0;
+        const history = demandHistory[mat]?.[region] || [];
+        let forecast;
+        if (config.mode === "pull") {
+          forecast = lastDemand + config.safetyStock;
+        } else {
+          const avg =
+            history.length > 0
+              ? movingAverage([...history, lastDemand], config.forecastWindow)
+              : lastDemand;
+          forecast = avg + config.safetyStock;
+        }
+        const regionalStock = shadowInventory[mat]?.regions?.[region] ?? 0;
+        const inPipeline = pipelineByRegion[region] || 0;
+        const need = Math.max(0, forecast - regionalStock - inPipeline);
+        regionDemands[region] = { forecast, regionalStock, inPipeline, need, lastDemand };
+      }
 
-function renderRecTable(tbodyId, rec) {
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const r = rec[p.code];
-    if (!r) return;
-    const tr = document.createElement('tr');
-    const statusMap = {
-      'OK': 'badge-ok',
-      'Hub Low': 'badge-low',
-      'Insufficient Hub Stock': 'badge-insuf',
-      'Replenishment Due Soon': 'badge-due',
-    };
-    const badgeCls = statusMap[r.status] || 'badge-hold';
+      // Sort regions by need descending (prioritize higher demand)
+      const sortedRegions = Object.entries(regionDemands).sort(
+        (a, b) => b[1].need - a[1].need
+      );
 
-    function transferCell(w) {
-      const q = r.allocated[w];
-      if (q > 0) return `<span class="send-val">${q}</span>`;
-      const sold = state.sold[p.code][w];
-      if (sold === 0) return `<span class="hold-val">Hold</span>`;
-      return `<span class="hold-val">0</span>`;
+      // Allocate from available hub stock
+      let remaining = availableAfterBuffer;
+      const transfers = {};
+      for (const [region, info] of sortedRegions) {
+        if (info.need <= 0) {
+          transfers[region] = 0;
+          continue;
+        }
+        const batchNeed = Math.ceil(info.need / config.minBatch) * config.minBatch;
+        const canSend = Math.min(batchNeed, remaining);
+        if (canSend < config.minBatch) {
+          transfers[region] = 0; // below min batch
+        } else {
+          transfers[region] = canSend;
+          remaining -= canSend;
+        }
+      }
+
+      const totalOutbound = Object.values(transfers).reduce((a, b) => a + b, 0);
+      const bufferRemaining = hubStock - totalOutbound;
+      const status =
+        bufferRemaining < config.hubBuffer
+          ? "⚠ BUFFER BREACH"
+          : totalOutbound === 0
+          ? "✓ SUFFICIENT"
+          : "→ TRANSFER";
+
+      results.push({
+        mat,
+        hubStock,
+        transfers,
+        regionDemands,
+        totalOutbound,
+        bufferRemaining,
+        status,
+        pipelineByRegion,
+      });
     }
+    return results;
+  }, [allMaterials, shadowInventory, salesData, demandHistory, pipeline, config]);
 
-    const totalOut = r.allocated['03N'] + r.allocated['03S'] + r.allocated['03W'];
-    tr.innerHTML = `
-      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
-      <td style="font-family:var(--mono)">${r.hubStock}</td>
-      <td>${transferCell('03N')}</td>
-      <td>${transferCell('03S')}</td>
-      <td>${transferCell('03W')}</td>
-      <td style="font-family:var(--mono);color:${totalOut > 0 ? 'var(--orange)' : 'var(--text3)'};">${totalOut > 0 ? totalOut : '—'}</td>
-      <td><span class="badge ${badgeCls}">${r.status}</span></td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
+  // ── COMMIT TRANSFERS ─────────────────────────────────────────────────────
+  const commitTransfers = useCallback(() => {
+    const newShipments = [];
+    const newHistory = [];
 
-// ============================================================
-// LIVE VIEW
-// ============================================================
-function renderLive() {
-  // Hub update table
-  const hTbody = document.getElementById('live-hub-tbody');
-  hTbody.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const inv = state.inventory[p.code];
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
-      <td style="font-family:var(--mono)">${inv['03']}</td>
-      <td><input class="editable" type="number" min="0" id="live-hub-${p.code}" style="width:80px"></td>
-    `;
-    hTbody.appendChild(tr);
-  });
-
-  // Sold table
-  const sTbody = document.getElementById('live-sold-tbody');
-  sTbody.innerHTML = '';
-  PRODUCTS.forEach(p => {
-    const s = state.sold[p.code];
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><span class="prod-code">${p.code}</span><span class="prod-name">${p.name}</span></td>
-      <td><input class="editable" type="number" min="0" id="live-03N-${p.code}" value="${s['03N']}" style="width:65px"></td>
-      <td><input class="editable" type="number" min="0" id="live-03S-${p.code}" value="${s['03S']}" style="width:65px"></td>
-      <td><input class="editable" type="number" min="0" id="live-03W-${p.code}" value="${s['03W']}" style="width:65px"></td>
-    `;
-    sTbody.appendChild(tr);
-  });
-
-  // Hub total
-  let total = 0;
-  PRODUCTS.forEach(p => { total += state.inventory[p.code]['03']; });
-  document.getElementById('live-hub-total').textContent = total;
-  document.getElementById('live-mode-label').textContent = state.planMode.toUpperCase();
-
-  // Recommendations
-  computeRecommendations();
-  renderRecTable('live-rec-tbody', lastRec);
-}
-
-function applyLiveHub() {
-  PRODUCTS.forEach(p => {
-    const val = parseInt(document.getElementById(`live-hub-${p.code}`).value);
-    if (!isNaN(val)) {
-      state.inventory[p.code].prevHub = state.inventory[p.code]['03'];
-      state.inventory[p.code]['03'] = val;
-    }
-  });
-  renderLive();
-  showToast('Hub inventory updated');
-}
-
-function applyLiveSold() {
-  PRODUCTS.forEach(p => {
-    WAREHOUSES.forEach(w => {
-      const el = document.getElementById(`live-${w}-${p.code}`);
-      if (el) state.sold[p.code][w] = parseInt(el.value) || 0;
-    });
-  });
-  renderLive();
-  showToast('Sold quantities updated (replaced)');
-}
-
-// ============================================================
-// FILE UPLOAD: SOLD REPORT
-// ============================================================
-/*
-  COLUMN MAPPING — row-based SAP/ERP export format:
-    Area / Region / Location       → warehouse region (North → 03N, South → 03S, West → 03W)
-    Material Number / Material /
-      Product / Code / SKU         → product code (BB-T01 → T01, etc.)
-    Quantity / Qty / Sold Qty /
-      Sales Qty                    → sold quantity (may contain "ST" unit suffix)
-
-  Each row is one product-region pair.
-  A fresh upload RESETS all sold values first, then fills from the file.
-*/
-function uploadSold(input) {
-  const file = input.files[0];
-  if (!file) return;
-  // Route ALL file types through XLSX for safe parsing (handles CSV, XLS, XLSX)
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    console.log('Sold rows sample:', rows.slice(0, 5));
-    processSoldRows(rows);
-  };
-  reader.readAsArrayBuffer(file);
-  input.value = '';
-}
-
-function processSoldRows(rows) {
-  // Reset all sold values before applying fresh report (replace, not accumulate)
-  PRODUCTS.forEach(p => {
-    state.sold[p.code]['03N'] = 0;
-    state.sold[p.code]['03S'] = 0;
-    state.sold[p.code]['03W'] = 0;
-  });
-
-  let updated = 0;
-
-  rows.forEach(row => {
-    const areaRaw     = findCol(row, ['Area', 'Region', 'Location']);
-    const materialRaw = findCol(row, ['Material Number', 'Material', 'Product', 'Code', 'SKU']);
-    const qtyRaw      = findCol(row, ['Quantity', 'Qty', 'Sold Qty', 'Sales Qty']);
-
-    if (!areaRaw || !materialRaw) return;
-
-    const area     = String(areaRaw).trim().toUpperCase();
-    const material = String(materialRaw).trim().toUpperCase();
-
-    // Accept BB-T01 style codes or bare T01 style codes
-    const match = material.match(/T0[1-6]/);
-    if (!match) return;
-    const productCode = match[0]; // e.g. "T01"
-
-    const areaMap = { NORTH: '03N', SOUTH: '03S', WEST: '03W' };
-    const wh = areaMap[area];
-    if (!wh || !state.sold[productCode]) return;
-
-    state.sold[productCode][wh] = parseNum(qtyRaw);
-    updated++;
-  });
-
-  if (updated > 0) {
-    renderSold();
-    computeRecommendations();
-    showToast(`Sold report imported — ${updated} row(s) processed`);
-  } else {
-    showToast('Could not parse sold report — check Area / Material Number / Quantity columns', true);
-  }
-}
-
-// ============================================================
-// FILE UPLOAD: VALUATION
-// ============================================================
-/*
-  COLUMN MAPPING — adapt this section for your valuation file layout.
-  Expected Excel structure:
-    Column A (or "Round") → Round identifier (e.g. "Round 1", "1", etc.)
-    Remaining columns     → Any valuation data columns (e.g. Product, Value, ...)
-  
-  If each sheet = one round, the sheet name is used as the round key.
-  If a "Round" column exists, rows are grouped by it.
-*/
-function uploadValuation(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
-    let added = 0;
-    // Try multi-sheet (each sheet = one round)
-    wb.SheetNames.forEach(sheetName => {
-      const ws = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
-      if (rows.length === 0) return;
-      // Check if rows have a "Round" column
-      const firstRow = rows[0];
-      const roundCol = Object.keys(firstRow).find(k => /round/i.test(k));
-      if (roundCol) {
-        // Group by round value
-        const grouped = {};
-        rows.forEach(r => {
-          const rKey = `Round ${r[roundCol]}`.replace(/^Round Round /i, 'Round ');
-          if (!grouped[rKey]) grouped[rKey] = [];
-          const rowCopy = { ...r };
-          delete rowCopy[roundCol];
-          grouped[rKey].push(rowCopy);
-        });
-        Object.entries(grouped).forEach(([rKey, rRows]) => {
-          state.valuation[rKey] = rRows; // replace if exists
-          added++;
-        });
-      } else {
-        // Use sheet name as round
-        const rKey = sheetName.match(/^\d+$/) ? `Round ${sheetName}` : sheetName;
-        state.valuation[rKey] = rows;
-        added++;
+    setShadowInventory((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      for (const rec of recommendations) {
+        const { mat, transfers } = rec;
+        for (const [region, qty] of Object.entries(transfers)) {
+          if (qty <= 0) continue;
+          if (!next[mat]) next[mat] = { hub: 0, regions: {} };
+          next[mat].hub = Math.max(0, (next[mat].hub || 0) - qty);
+          newShipments.push({
+            id: `${currentRound}-${mat}-${region}-${Date.now()}`,
+            round: currentRound,
+            material: mat,
+            region,
+            qty,
+            arrivalRound: currentRound + config.shippingDelay,
+          });
+          newHistory.push({
+            round: currentRound,
+            material: mat,
+            region,
+            qty,
+            cost: 100,
+          });
+        }
       }
+      return next;
     });
-    renderValuationDropdown();
-    showToast(`Valuation imported — ${added} round(s) stored/updated`);
+
+    setPipeline((prev) => [...prev, ...newShipments]);
+    setTransferHistory((prev) => [...prev, ...newHistory]);
+    setPendingTransfers({});
+  }, [recommendations, currentRound, config.shippingDelay]);
+
+  // ── RECONCILE INVENTORY ──────────────────────────────────────────────────
+  const applyReconciliation = useCallback(() => {
+    setShadowInventory((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      for (const [key, val] of Object.entries(reconcileInputs)) {
+        const qty = parseFloat(val);
+        if (isNaN(qty)) continue;
+        const [mat, loc] = key.split("|");
+        if (!next[mat]) next[mat] = { hub: 0, regions: {} };
+        if (loc === "hub") {
+          next[mat].hub = qty;
+        } else {
+          if (!next[mat].regions) next[mat].regions = {};
+          next[mat].regions[loc] = qty;
+        }
+      }
+      return next;
+    });
+    setReconcileMsg(`✓ Inventory reconciled at round ${currentRound}`);
+    setTimeout(() => setReconcileMsg(""), 3000);
+    setReconcileInputs({});
+  }, [reconcileInputs, currentRound]);
+
+  // ── HUB STOCK MANUAL SET ─────────────────────────────────────────────────
+  const [hubInputs, setHubInputs] = useState({});
+  const setHubStock = () => {
+    setShadowInventory((prev) => {
+      const next = JSON.parse(JSON.stringify(prev));
+      for (const [mat, val] of Object.entries(hubInputs)) {
+        const qty = parseFloat(val);
+        if (isNaN(qty)) continue;
+        if (!next[mat]) next[mat] = { hub: 0, regions: {} };
+        next[mat].hub = qty;
+      }
+      return next;
+    });
+    setHubInputs({});
   };
-  reader.readAsArrayBuffer(file);
-  input.value = '';
-}
 
-// ============================================================
-// FILE UPLOAD: INVENTORY REPORT
-// ============================================================
-/*
-  COLUMN MAPPING — row-based SAP/ERP export format:
-    Location / Warehouse / Area    → warehouse code (03, 03N, 03S, 03W)
-    Material / Material Number /
-      Product / Code / SKU         → product code (BB-T01 → T01, etc.)
-    Stock / Qty / Quantity /
-      Available Stock              → stock quantity (may contain "ST" unit suffix)
-
-  Each row is one product-location pair.
-  Rows with locations other than 03, 03N, 03S, 03W are ignored.
-  Hub (03) updates store prevHub before replacing.
-*/
-function uploadHubInventory(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    console.log('Inventory rows sample:', rows.slice(0, 5));
-    processInventoryRows(rows);
+  // ─── STYLES ─────────────────────────────────────────────────────────────
+  const s = {
+    app: {
+      fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
+      background: "#0d1117",
+      minHeight: "100vh",
+      color: "#c9d1d9",
+      padding: "0",
+    },
+    header: {
+      background: "#161b22",
+      borderBottom: "1px solid #30363d",
+      padding: "16px 24px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flexWrap: "wrap",
+      gap: "12px",
+    },
+    headerTitle: {
+      color: "#f0f6fc",
+      fontSize: "14px",
+      fontWeight: "600",
+      letterSpacing: "0.1em",
+      textTransform: "uppercase",
+      margin: 0,
+    },
+    headerSub: { color: "#8b949e", fontSize: "11px", marginTop: "2px" },
+    badge: (color) => ({
+      display: "inline-block",
+      padding: "2px 8px",
+      borderRadius: "3px",
+      fontSize: "11px",
+      fontWeight: "600",
+      background: color === "green" ? "#1a4731" : color === "amber" ? "#3d2b00" : "#1c2128",
+      color: color === "green" ? "#3fb950" : color === "amber" ? "#d29922" : "#8b949e",
+      border: `1px solid ${color === "green" ? "#238636" : color === "amber" ? "#9e6a03" : "#30363d"}`,
+    }),
+    roundCtrl: {
+      display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap",
+    },
+    roundNum: {
+      fontSize: "20px", fontWeight: "700", color: "#58a6ff", minWidth: "28px", textAlign: "center",
+    },
+    tabs: {
+      display: "flex", gap: "0", borderBottom: "1px solid #30363d",
+      background: "#161b22", padding: "0 24px",
+    },
+    tab: (active) => ({
+      padding: "10px 18px",
+      fontSize: "12px",
+      fontWeight: active ? "600" : "400",
+      color: active ? "#f0f6fc" : "#8b949e",
+      borderBottom: active ? "2px solid #58a6ff" : "2px solid transparent",
+      cursor: "pointer",
+      background: "none",
+      border: "none",
+      borderBottom: active ? "2px solid #58a6ff" : "2px solid transparent",
+      letterSpacing: "0.05em",
+      textTransform: "uppercase",
+    }),
+    body: { padding: "20px 24px" },
+    section: {
+      background: "#161b22",
+      border: "1px solid #30363d",
+      borderRadius: "6px",
+      marginBottom: "16px",
+      overflow: "hidden",
+    },
+    sectionHead: {
+      padding: "10px 16px",
+      borderBottom: "1px solid #30363d",
+      fontSize: "11px",
+      fontWeight: "600",
+      color: "#8b949e",
+      letterSpacing: "0.1em",
+      textTransform: "uppercase",
+      background: "#0d1117",
+    },
+    sectionBody: { padding: "16px" },
+    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" },
+    grid4: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" },
+    label: { fontSize: "11px", color: "#8b949e", marginBottom: "4px", display: "block", letterSpacing: "0.05em" },
+    input: {
+      background: "#0d1117", border: "1px solid #30363d", borderRadius: "4px",
+      color: "#c9d1d9", padding: "6px 10px", fontSize: "12px", width: "100%",
+      fontFamily: "inherit", outline: "none", boxSizing: "border-box",
+    },
+    select: {
+      background: "#0d1117", border: "1px solid #30363d", borderRadius: "4px",
+      color: "#c9d1d9", padding: "6px 10px", fontSize: "12px", width: "100%",
+      fontFamily: "inherit", outline: "none",
+    },
+    btn: (variant) => ({
+      padding: "7px 16px",
+      borderRadius: "4px",
+      fontSize: "12px",
+      fontWeight: "600",
+      cursor: "pointer",
+      fontFamily: "inherit",
+      letterSpacing: "0.05em",
+      border: variant === "primary"
+        ? "1px solid #238636"
+        : variant === "danger"
+        ? "1px solid #da3633"
+        : "1px solid #30363d",
+      background: variant === "primary"
+        ? "#238636"
+        : variant === "danger"
+        ? "#da3633"
+        : "#21262d",
+      color: variant === "primary" || variant === "danger" ? "#fff" : "#c9d1d9",
+    }),
+    textarea: {
+      background: "#0d1117", border: "1px solid #30363d", borderRadius: "4px",
+      color: "#c9d1d9", padding: "10px", fontSize: "11px", width: "100%",
+      fontFamily: "'IBM Plex Mono', monospace", resize: "vertical", outline: "none",
+      boxSizing: "border-box", lineHeight: "1.5",
+    },
+    table: { width: "100%", borderCollapse: "collapse", fontSize: "11px" },
+    th: {
+      padding: "8px 10px", textAlign: "left", borderBottom: "1px solid #30363d",
+      color: "#8b949e", fontWeight: "600", letterSpacing: "0.08em",
+      textTransform: "uppercase", whiteSpace: "nowrap",
+    },
+    td: (highlight) => ({
+      padding: "7px 10px", borderBottom: "1px solid #21262d",
+      color: highlight === "green" ? "#3fb950" : highlight === "amber" ? "#d29922" : highlight === "red" ? "#f85149" : "#c9d1d9",
+      fontWeight: highlight ? "600" : "400",
+    }),
+    monoNum: { fontFamily: "inherit", fontVariantNumeric: "tabular-nums" },
+    statusRow: (status) => ({
+      background: status.includes("BREACH") ? "rgba(248,81,73,0.05)"
+        : status.includes("TRANSFER") ? "rgba(88,166,255,0.04)"
+        : "transparent",
+    }),
+    msgBox: { padding: "8px 12px", borderRadius: "4px", fontSize: "12px", marginBottom: "12px" },
+    errorBox: { background: "#3d0000", border: "1px solid #da3633", color: "#f85149" },
+    successBox: { background: "#1a4731", border: "1px solid #238636", color: "#3fb950" },
   };
-  reader.readAsArrayBuffer(file);
-  input.value = '';
-}
 
-function processInventoryRows(rows) {
-  let updated = 0;
+  const cfgField = (key, label, type = "number", opts) => (
+    <div key={key}>
+      <label style={s.label}>{label}</label>
+      {type === "select" ? (
+        <select
+          style={s.select}
+          value={config[key]}
+          onChange={(e) => setConfig((c) => ({ ...c, [key]: e.target.value }))}
+        >
+          {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      ) : (
+        <input
+          style={s.input}
+          type="number"
+          value={config[key]}
+          onChange={(e) => setConfig((c) => ({ ...c, [key]: +e.target.value }))}
+        />
+      )}
+    </div>
+  );
 
-  rows.forEach(row => {
-    const locationRaw = findCol(row, ['Location', 'Warehouse', 'Area']);
-    const materialRaw = findCol(row, ['Material', 'Material Number', 'Product', 'Code', 'SKU']);
-    const stockRaw    = findCol(row, ['Stock', 'Qty', 'Quantity', 'Available Stock']);
-
-    if (!locationRaw || !materialRaw) return;
-
-    const location = String(locationRaw).trim().toUpperCase();
-    const material  = String(materialRaw).trim().toUpperCase();
-
-    // Accept BB-T01 style codes or bare T01 style codes
-    const match = material.match(/T0[1-6]/);
-    if (!match) return;
-    const productCode = match[0]; // e.g. "T01"
-
-    if (!['03', '03N', '03S', '03W'].includes(location)) return;
-    if (!state.inventory[productCode]) return;
-
-    const stock = parseNum(stockRaw);
-
-    if (location === '03') {
-      // Preserve previous hub value for delta calculation
-      state.inventory[productCode].prevHub = state.inventory[productCode]['03'];
+  const allRegionsInData = useMemo(() => {
+    const s = new Set();
+    for (const mat of Object.keys(salesData)) {
+      for (const r of Object.keys(salesData[mat])) s.add(r);
     }
+    return [...s].sort();
+  }, [salesData]);
 
-    state.inventory[productCode][location] = stock;
-    updated++;
-  });
+  return (
+    <div style={s.app}>
+      {/* Header */}
+      <div style={s.header}>
+        <div>
+          <p style={s.headerTitle}>▸ ERP LOGISTICS SIM — TOOL 1: TRANSFER RECOMMENDER</p>
+          <p style={s.headerSub}>Hub → Regional Warehouse Distribution Engine</p>
+        </div>
+        <div style={s.roundCtrl}>
+          <span style={s.label}>SIMULATION ROUND</span>
+          <span style={s.roundNum}>{currentRound}</span>
+          <span style={{ ...s.badge(""), ...{ marginLeft: "4px" } }}>
+            {config.mode.toUpperCase()} MODE
+          </span>
+          <button style={s.btn("primary")} onClick={applySalesRound}>
+            ▶ ADVANCE ROUND
+          </button>
+        </div>
+      </div>
 
-  if (updated > 0) {
-    renderInventory();
-    computeRecommendations();
-    showToast(`Inventory report imported — ${updated} row(s) processed`);
-  } else {
-    showToast('Could not parse inventory report — check Location / Material / Stock columns', true);
-  }
+      {/* Tabs */}
+      <div style={s.tabs}>
+        {["recommend", "config", "inventory", "history"].map((t) => (
+          <button key={t} style={s.tab(activeTab === t)} onClick={() => setActiveTab(t)}>
+            {t === "recommend" ? "⬡ Recommendations"
+              : t === "config" ? "⚙ Config"
+              : t === "inventory" ? "📦 Inventory"
+              : "📋 History"}
+          </button>
+        ))}
+      </div>
+
+      <div style={s.body}>
+
+        {/* ── RECOMMENDATIONS TAB ── */}
+        {activeTab === "recommend" && (
+          <>
+            {/* Sales CSV Input */}
+            <div style={s.section}>
+              <div style={s.sectionHead}>AREA SALES REPORT (CSV)</div>
+              <div style={s.sectionBody}>
+                <textarea
+                  style={{ ...s.textarea, height: "100px" }}
+                  value={salesCSV}
+                  onChange={(e) => setSalesCSV(e.target.value)}
+                />
+                {csvError && <div style={{ ...s.msgBox, ...s.errorBox }}>{csvError}</div>}
+                <div style={{ marginTop: "6px", fontSize: "11px", color: "#8b949e" }}>
+                  Expected columns: Area, Material Number, Quantity — material codes auto-normalized (BB-T01 → T01)
+                </div>
+              </div>
+            </div>
+
+            {/* Recommendation Table */}
+            <div style={s.section}>
+              <div style={s.sectionHead}>
+                TRANSFER RECOMMENDATIONS — ROUND {currentRound}
+                &nbsp;&nbsp;
+                <span style={s.badge(config.mode === "pull" ? "amber" : "green")}>
+                  {config.mode === "pull" ? "PULL: last demand + safety" : "PUSH: moving avg forecast + safety"}
+                </span>
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                {recommendations.length === 0 ? (
+                  <div style={{ padding: "20px", color: "#8b949e", fontSize: "12px" }}>
+                    No materials parsed. Check sales CSV above.
+                  </div>
+                ) : (
+                  <table style={s.table}>
+                    <thead>
+                      <tr>
+                        <th style={s.th}>Product</th>
+                        <th style={s.th}>Hub Est. Stock</th>
+                        {allRegionsInData.map((r) => (
+                          <th key={r} style={s.th}>{r} Reg. Stock</th>
+                        ))}
+                        {allRegionsInData.map((r) => (
+                          <th key={r + "p"} style={s.th}>{r} Pipeline</th>
+                        ))}
+                        {allRegionsInData.map((r) => (
+                          <th key={r + "t"} style={{ ...s.th, color: "#58a6ff" }}>→ {r}</th>
+                        ))}
+                        <th style={s.th}>Total Out</th>
+                        <th style={s.th}>Buffer Rem.</th>
+                        <th style={s.th}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recommendations.map((rec) => (
+                        <tr key={rec.mat} style={s.statusRow(rec.status)}>
+                          <td style={{ ...s.td(), fontWeight: "700", color: "#f0f6fc" }}>{rec.mat}</td>
+                          <td style={s.td()}>{rec.hubStock.toFixed(0)}</td>
+                          {allRegionsInData.map((r) => (
+                            <td key={r} style={s.td()}>
+                              {(rec.regionDemands[r]?.regionalStock ?? "—")}
+                            </td>
+                          ))}
+                          {allRegionsInData.map((r) => (
+                            <td key={r + "p"} style={s.td("amber")}>
+                              {rec.pipelineByRegion[r] ? rec.pipelineByRegion[r].toFixed(0) : "—"}
+                            </td>
+                          ))}
+                          {allRegionsInData.map((r) => (
+                            <td key={r + "t"} style={s.td(rec.transfers[r] > 0 ? "green" : null)}>
+                              {rec.transfers[r] > 0 ? rec.transfers[r].toFixed(0) : "—"}
+                            </td>
+                          ))}
+                          <td style={s.td(rec.totalOutbound > 0 ? "green" : null)}>
+                            {rec.totalOutbound.toFixed(0)}
+                          </td>
+                          <td style={s.td(rec.bufferRemaining < config.hubBuffer ? "red" : null)}>
+                            {rec.bufferRemaining.toFixed(0)}
+                          </td>
+                          <td style={s.td(
+                            rec.status.includes("BREACH") ? "red"
+                              : rec.status.includes("TRANSFER") ? "green"
+                              : null
+                          )}>
+                            {rec.status}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Cost Summary + Commit */}
+            {recommendations.length > 0 && (
+              <div style={s.section}>
+                <div style={s.sectionHead}>TRANSFER COST SUMMARY</div>
+                <div style={{ ...s.sectionBody, display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap" }}>
+                  {(() => {
+                    const totalShipments = recommendations.reduce(
+                      (sum, r) => sum + Object.values(r.transfers).filter((v) => v > 0).length, 0
+                    );
+                    const totalQty = recommendations.reduce((sum, r) => sum + r.totalOutbound, 0);
+                    const totalCost = totalShipments * 100;
+                    return (
+                      <>
+                        <div>
+                          <div style={s.label}>SHIPMENTS</div>
+                          <div style={{ fontSize: "20px", fontWeight: "700", color: "#58a6ff" }}>{totalShipments}</div>
+                        </div>
+                        <div>
+                          <div style={s.label}>TOTAL UNITS</div>
+                          <div style={{ fontSize: "20px", fontWeight: "700", color: "#f0f6fc" }}>{totalQty.toFixed(0)}</div>
+                        </div>
+                        <div>
+                          <div style={s.label}>TRANSPORT COST</div>
+                          <div style={{ fontSize: "20px", fontWeight: "700", color: "#d29922" }}>${totalCost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div style={s.label}>ARRIVAL ROUND</div>
+                          <div style={{ fontSize: "20px", fontWeight: "700", color: "#8b949e" }}>
+                            {currentRound + config.shippingDelay}
+                          </div>
+                        </div>
+                        <div style={{ marginLeft: "auto" }}>
+                          <button style={s.btn("primary")} onClick={commitTransfers}>
+                            ✓ COMMIT TRANSFERS
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Demand Breakdown */}
+            {recommendations.length > 0 && (
+              <div style={s.section}>
+                <div style={s.sectionHead}>REGIONAL DEMAND BREAKDOWN</div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={s.table}>
+                    <thead>
+                      <tr>
+                        <th style={s.th}>Product</th>
+                        <th style={s.th}>Region</th>
+                        <th style={s.th}>Last Demand</th>
+                        <th style={s.th}>Forecast Need</th>
+                        <th style={s.th}>Regional Stock</th>
+                        <th style={s.th}>In Pipeline</th>
+                        <th style={s.th}>Net Need</th>
+                        <th style={s.th}>Rec. Transfer</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recommendations.flatMap((rec) =>
+                        allRegionsInData
+                          .filter((r) => rec.regionDemands[r])
+                          .map((r) => {
+                            const d = rec.regionDemands[r];
+                            return (
+                              <tr key={rec.mat + r}>
+                                <td style={{ ...s.td(), fontWeight: "600", color: "#f0f6fc" }}>{rec.mat}</td>
+                                <td style={s.td()}>{r}</td>
+                                <td style={s.td()}>{d.lastDemand.toFixed(0)}</td>
+                                <td style={s.td()}>{d.forecast.toFixed(0)}</td>
+                                <td style={s.td()}>{d.regionalStock.toFixed(0)}</td>
+                                <td style={s.td("amber")}>{d.inPipeline.toFixed(0)}</td>
+                                <td style={s.td(d.need > 0 ? "red" : null)}>{d.need.toFixed(0)}</td>
+                                <td style={s.td((rec.transfers[r] || 0) > 0 ? "green" : null)}>
+                                  {(rec.transfers[r] || 0).toFixed(0)}
+                                </td>
+                              </tr>
+                            );
+                          })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── CONFIG TAB ── */}
+        {activeTab === "config" && (
+          <div style={s.section}>
+            <div style={s.sectionHead}>SIMULATION CONFIGURATION</div>
+            <div style={s.sectionBody}>
+              <div style={s.grid2}>
+                {cfgField("mode", "TRANSFER MODE", "select", [
+                  { value: "pull", label: "Pull — last round demand + safety stock" },
+                  { value: "push", label: "Push — moving average forecast + safety stock" },
+                ])}
+                {cfgField("shippingDelay", "SHIPPING DELAY (ROUNDS)")}
+                {cfgField("hubBuffer", "HUB BUFFER STOCK (UNITS)")}
+                {cfgField("safetyStock", "SAFETY STOCK PER REGION")}
+                {cfgField("minBatch", "MINIMUM BATCH SIZE (UNITS)")}
+                {cfgField("forecastWindow", "FORECAST WINDOW (ROUNDS, PUSH ONLY)")}
+              </div>
+              <div style={{ marginTop: "16px", padding: "12px", background: "#0d1117", borderRadius: "4px", fontSize: "11px", color: "#8b949e", lineHeight: "1.8" }}>
+                <strong style={{ color: "#c9d1d9" }}>Logic Summary:</strong><br />
+                Pull mode: Transfer = max(0, last_demand + safety_stock − regional_stock − pipeline)<br />
+                Push mode: Transfer = max(0, moving_avg({config.forecastWindow}R) + safety_stock − regional_stock − pipeline)<br />
+                Hub constraint: Available = hub_stock − hub_buffer ({config.hubBuffer})<br />
+                Priority: Regions sorted by net need (highest first) when hub stock is limited<br />
+                Min batch: Transfers below {config.minBatch} units are suppressed as uneconomical<br />
+                Transport cost: $100 per shipment (regardless of quantity)
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── INVENTORY TAB ── */}
+        {activeTab === "inventory" && (
+          <>
+            {/* Set Hub Stock */}
+            <div style={s.section}>
+              <div style={s.sectionHead}>SET HUB INVENTORY (MANUAL OVERRIDE)</div>
+              <div style={s.sectionBody}>
+                <div style={s.grid4}>
+                  {allMaterials.map((mat) => (
+                    <div key={mat}>
+                      <label style={s.label}>{mat} — Hub</label>
+                      <input
+                        style={s.input}
+                        type="number"
+                        placeholder={shadowInventory[mat]?.hub ?? 0}
+                        value={hubInputs[mat] ?? ""}
+                        onChange={(e) => setHubInputs((h) => ({ ...h, [mat]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button style={{ ...s.btn("primary"), marginTop: "12px" }} onClick={setHubStock}>
+                  APPLY HUB STOCK
+                </button>
+              </div>
+            </div>
+
+            {/* Shadow Inventory View */}
+            <div style={s.section}>
+              <div style={s.sectionHead}>SHADOW INVENTORY SNAPSHOT — ROUND {currentRound}</div>
+              <div style={{ overflowX: "auto" }}>
+                {allMaterials.length === 0 ? (
+                  <div style={{ padding: "16px", color: "#8b949e", fontSize: "12px" }}>No materials loaded.</div>
+                ) : (
+                  <table style={s.table}>
+                    <thead>
+                      <tr>
+                        <th style={s.th}>Material</th>
+                        <th style={s.th}>Hub Stock</th>
+                        {allRegionsInData.map((r) => <th key={r} style={s.th}>{r}</th>)}
+                        <th style={s.th}>Pipeline (total)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allMaterials.map((mat) => {
+                        const pipeTotal = pipeline
+                          .filter((s) => s.material === mat)
+                          .reduce((a, s) => a + s.qty, 0);
+                        return (
+                          <tr key={mat}>
+                            <td style={{ ...s.td(), fontWeight: "600", color: "#f0f6fc" }}>{mat}</td>
+                            <td style={s.td("green")}>{(shadowInventory[mat]?.hub ?? 0).toFixed(0)}</td>
+                            {allRegionsInData.map((r) => (
+                              <td key={r} style={s.td()}>
+                                {(shadowInventory[mat]?.regions?.[r] ?? 0).toFixed(0)}
+                              </td>
+                            ))}
+                            <td style={s.td("amber")}>{pipeTotal.toFixed(0)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Pipeline Details */}
+            <div style={s.section}>
+              <div style={s.sectionHead}>PIPELINE SHIPMENTS IN TRANSIT</div>
+              <div style={{ overflowX: "auto" }}>
+                {pipeline.length === 0 ? (
+                  <div style={{ padding: "16px", color: "#8b949e", fontSize: "12px" }}>No shipments in transit.</div>
+                ) : (
+                  <table style={s.table}>
+                    <thead>
+                      <tr>
+                        <th style={s.th}>Material</th>
+                        <th style={s.th}>Region</th>
+                        <th style={s.th}>Qty</th>
+                        <th style={s.th}>Dispatched Round</th>
+                        <th style={s.th}>Arrival Round</th>
+                        <th style={s.th}>ETA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pipeline.map((ship) => (
+                        <tr key={ship.id}>
+                          <td style={{ ...s.td(), fontWeight: "600", color: "#f0f6fc" }}>{ship.material}</td>
+                          <td style={s.td()}>{ship.region}</td>
+                          <td style={s.td("green")}>{ship.qty.toFixed(0)}</td>
+                          <td style={s.td()}>{ship.round}</td>
+                          <td style={s.td("amber")}>{ship.arrivalRound}</td>
+                          <td style={s.td()}>
+                            {ship.arrivalRound - currentRound > 0
+                              ? `${ship.arrivalRound - currentRound} round(s)`
+                              : "Arriving this round"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Reconciliation */}
+            <div style={s.section}>
+              <div style={s.sectionHead}>INVENTORY RECONCILIATION (ACTUAL COUNT OVERRIDE)</div>
+              <div style={s.sectionBody}>
+                {reconcileMsg && (
+                  <div style={{ ...s.msgBox, ...s.successBox }}>{reconcileMsg}</div>
+                )}
+                <p style={{ fontSize: "11px", color: "#8b949e", marginBottom: "12px" }}>
+                  Enter actual physical counts to correct shadow inventory drift. Leave blank to keep current estimates.
+                </p>
+                {allMaterials.map((mat) => (
+                  <div key={mat} style={{ marginBottom: "12px" }}>
+                    <div style={{ ...s.label, color: "#f0f6fc", marginBottom: "6px" }}>{mat}</div>
+                    <div style={s.grid4}>
+                      <div>
+                        <label style={s.label}>HUB</label>
+                        <input
+                          style={s.input}
+                          type="number"
+                          placeholder={shadowInventory[mat]?.hub ?? 0}
+                          value={reconcileInputs[`${mat}|hub`] ?? ""}
+                          onChange={(e) =>
+                            setReconcileInputs((r) => ({ ...r, [`${mat}|hub`]: e.target.value }))
+                          }
+                        />
+                      </div>
+                      {allRegionsInData.map((region) => (
+                        <div key={region}>
+                          <label style={s.label}>{region}</label>
+                          <input
+                            style={s.input}
+                            type="number"
+                            placeholder={shadowInventory[mat]?.regions?.[region] ?? 0}
+                            value={reconcileInputs[`${mat}|${region}`] ?? ""}
+                            onChange={(e) =>
+                              setReconcileInputs((r) => ({
+                                ...r,
+                                [`${mat}|${region}`]: e.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button style={s.btn("primary")} onClick={applyReconciliation}>
+                  APPLY RECONCILIATION
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── HISTORY TAB ── */}
+        {activeTab === "history" && (
+          <>
+            <div style={s.section}>
+              <div style={s.sectionHead}>TRANSFER HISTORY LOG</div>
+              <div style={{ overflowX: "auto" }}>
+                {transferHistory.length === 0 ? (
+                  <div style={{ padding: "16px", color: "#8b949e", fontSize: "12px" }}>
+                    No transfers committed yet. Use "Commit Transfers" on the Recommendations tab.
+                  </div>
+                ) : (
+                  <table style={s.table}>
+                    <thead>
+                      <tr>
+                        <th style={s.th}>Round</th>
+                        <th style={s.th}>Material</th>
+                        <th style={s.th}>Region</th>
+                        <th style={s.th}>Qty</th>
+                        <th style={s.th}>Transport Cost</th>
+                        <th style={s.th}>Arrival Round</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...transferHistory].reverse().map((h, i) => (
+                        <tr key={i}>
+                          <td style={s.td()}>{h.round}</td>
+                          <td style={{ ...s.td(), fontWeight: "600", color: "#f0f6fc" }}>{h.material}</td>
+                          <td style={s.td()}>{h.region}</td>
+                          <td style={s.td("green")}>{h.qty.toFixed(0)}</td>
+                          <td style={s.td("amber")}>${h.cost.toLocaleString()}</td>
+                          <td style={s.td()}>{h.round + config.shippingDelay}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* Totals */}
+            {transferHistory.length > 0 && (
+              <div style={s.section}>
+                <div style={s.sectionHead}>CUMULATIVE STATISTICS</div>
+                <div style={{ ...s.sectionBody, display: "flex", gap: "32px", flexWrap: "wrap" }}>
+                  {(() => {
+                    const totalCost = transferHistory.reduce((a, h) => a + h.cost, 0);
+                    const totalUnits = transferHistory.reduce((a, h) => a + h.qty, 0);
+                    const byRegion = {};
+                    for (const h of transferHistory) {
+                      byRegion[h.region] = (byRegion[h.region] || 0) + h.qty;
+                    }
+                    return (
+                      <>
+                        <div>
+                          <div style={s.label}>TOTAL SHIPMENTS</div>
+                          <div style={{ fontSize: "22px", fontWeight: "700", color: "#58a6ff" }}>{transferHistory.length}</div>
+                        </div>
+                        <div>
+                          <div style={s.label}>TOTAL UNITS TRANSFERRED</div>
+                          <div style={{ fontSize: "22px", fontWeight: "700", color: "#f0f6fc" }}>{totalUnits.toFixed(0)}</div>
+                        </div>
+                        <div>
+                          <div style={s.label}>TOTAL TRANSPORT COST</div>
+                          <div style={{ fontSize: "22px", fontWeight: "700", color: "#d29922" }}>${totalCost.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div style={s.label}>BY REGION</div>
+                          {Object.entries(byRegion).map(([r, qty]) => (
+                            <div key={r} style={{ fontSize: "12px", color: "#c9d1d9" }}>
+                              {r}: <strong>{qty.toFixed(0)}</strong> units
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
-
-// ============================================================
-// UTILITIES
-// ============================================================
-function findCol(row, candidates) {
-  for (const c of candidates) {
-    if (row[c] !== undefined && row[c] !== '') return row[c];
-    // case-insensitive search
-    const k = Object.keys(row).find(key => key.toLowerCase() === c.toLowerCase());
-    if (k && row[k] !== undefined && row[k] !== '') return row[k];
-  }
-  return null;
-}
-
-function parseNum(v) {
-  if (v === null || v === undefined) return 0;
-  // Strip unit suffixes like "ST", "EA", commas, then parse
-  const cleaned = String(v).replace(/[A-Z]+$/gi, '').replace(/,/g, '').trim();
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? 0 : Math.round(n);
-}
-
-function timeNow() {
-  return new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-}
-
-let toastTimer;
-function showToast(msg, isError = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = isError ? 'error' : '';
-  el.style.display = 'block';
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2800);
-}
-
-// ============================================================
-// RENDER ALL
-// ============================================================
-function renderAll() {
-  renderInventory();
-  renderSold();
-  renderReplenishment();
-  renderValuationDropdown();
-  renderValuation();
-  computeRecommendations();
-  setPlanMode(state.planMode);
-}
-
-// ============================================================
-// INIT
-// ============================================================
-initState();
-loadAll();
-renderAll();
-</script>
-</body>
-</html>
