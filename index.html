@@ -3,1552 +3,1208 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ERP Logistics — Tool 1: Transfer Recommender</title>
+<title>ERP Tool 1 — Transfer Recommender</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+/* ─────────────────────────────────────────────
+   FONTS & RESET
+───────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-  :root {
-    --bg: #0d0f14;
-    --surface: #13161e;
-    --surface2: #1a1e28;
-    --surface3: #222636;
-    --border: #2a2f42;
-    --border2: #353d58;
-    --text: #d4daf0;
-    --text2: #8890b0;
-    --text3: #555f7e;
-    --accent: #4f9cf8;
-    --accent2: #2563eb;
-    --green: #22c55e;
-    --yellow: #f59e0b;
-    --red: #ef4444;
-    --orange: #f97316;
-    --purple: #a855f7;
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'IBM Plex Sans', sans-serif;
-  }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #07090f;
+  --bg2:       #0c0f1a;
+  --panel:     #101422;
+  --panel2:    #161b2e;
+  --border:    #1f2640;
+  --border2:   #2a3352;
+  --text:      #c8d0e8;
+  --text2:     #7a85a8;
+  --text3:     #404a6a;
+  --hi:        #3b82f6;
+  --hi2:       #60a5fa;
+  --green:     #10b981;
+  --green2:    #34d399;
+  --yellow:    #f59e0b;
+  --red:       #ef4444;
+  --orange:    #f97316;
+  --purple:    #8b5cf6;
+  --mono:      'Space Mono', monospace;
+  --body:      'DM Sans', sans-serif;
+  --r:         6px;
+}
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--sans);
-    font-size: 13px;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
 
-  /* ─── Layout ─── */
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 24px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    position: sticky; top: 0; z-index: 100;
-  }
-  header .logo {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .12em;
-    color: var(--accent);
-    background: #1a2a4a;
-    border: 1px solid #2a4a7a;
-    padding: 4px 10px;
-    border-radius: 4px;
-  }
-  header h1 {
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--text);
-  }
-  header .subtitle {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text3);
-    margin-left: auto;
-  }
+/* ─────────────────────────────────────────────
+   HEADER
+───────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 24px;
+  height: 52px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 200;
+}
+.hdr-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: #1a2a50;
+  border: 1px solid #2a4080;
+  color: var(--hi2);
+  padding: 3px 10px;
+  border-radius: 3px;
+  letter-spacing: .1em;
+}
+.hdr-title {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 700;
+}
+.hdr-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#valDisplay {
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 3px;
+  border: 1px solid var(--border2);
+  background: var(--panel2);
+  color: var(--text2);
+  min-width: 180px;
+  text-align: center;
+}
+#roundTimer {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+}
 
-  main { padding: 20px 24px; max-width: 1600px; margin: 0 auto; }
+/* ─────────────────────────────────────────────
+   MAIN LAYOUT
+───────────────────────────────────────────── */
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: calc(100vh - 52px);
+}
 
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+/* ─────────────────────────────────────────────
+   LEFT SIDEBAR
+───────────────────────────────────────────── */
+.sidebar {
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
 
-  /* ─── Cards ─── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .card-header {
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    padding: 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .08em;
-    color: var(--text2);
-    text-transform: uppercase;
-  }
-  .card-header .dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--accent);
-  }
-  .card-body { padding: 16px; }
+.sb-section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.sb-head {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text3);
+  background: var(--panel2);
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.sb-body { padding: 12px; }
 
-  /* ─── Form controls ─── */
-  label {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text2);
-    margin-bottom: 4px;
-    font-family: var(--mono);
-    letter-spacing: .05em;
-  }
-  input, select, textarea {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 7px 10px;
-    border-radius: 5px;
-    outline: none;
-    transition: border-color .15s;
-  }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
-  textarea { resize: vertical; min-height: 80px; }
-  select option { background: var(--surface2); }
+/* Mode toggle */
+.mode-toggle {
+  display: flex;
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.mode-btn {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  cursor: pointer;
+  color: var(--text3);
+  background: var(--panel2);
+  border: none;
+  transition: all .15s;
+}
+.mode-btn.active {
+  background: var(--hi);
+  color: #fff;
+}
 
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  .form-group { margin-bottom: 12px; }
+/* Upload buttons */
+.upload-btn {
+  width: 100%;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: all .15s;
+  position: relative;
+  overflow: hidden;
+}
+.upload-btn:hover { border-color: var(--hi); color: var(--hi2); }
+.upload-btn.loaded { border-color: var(--green); color: var(--green2); background: #061f13; }
+.upload-btn .icon { font-size: 14px; flex-shrink: 0; }
+.upload-btn input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; font-size: 0;
+}
+.upload-status {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  margin-top: -4px;
+  margin-bottom: 8px;
+  padding-left: 4px;
+}
+.upload-status.ok { color: var(--green); }
 
-  /* ─── Buttons ─── */
-  .btn {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .08em;
-    padding: 8px 16px;
-    border-radius: 5px;
-    border: none;
-    cursor: pointer;
-    transition: all .15s;
-  }
-  .btn-primary { background: var(--accent2); color: #fff; }
-  .btn-primary:hover { background: var(--accent); }
-  .btn-secondary { background: var(--surface3); color: var(--text2); border: 1px solid var(--border); }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
-  .btn-danger { background: #3d1515; color: var(--red); border: 1px solid #5a2020; }
-  .btn-danger:hover { background: #5a1a1a; }
-  .btn-success { background: #153d25; color: var(--green); border: 1px solid #1f5c38; }
-  .btn-success:hover { background: #1a5530; }
-  .btn-sm { padding: 5px 10px; font-size: 10px; }
-  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+/* Manual inventory */
+.mini-form { display: flex; flex-direction: column; gap: 6px; }
+.mini-form input, .mini-form select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  outline: none;
+  width: 100%;
+}
+.mini-form input:focus, .mini-form select:focus { border-color: var(--hi); }
+.mini-form select option { background: var(--panel2); }
 
-  /* ─── Tables ─── */
-  .table-wrap { overflow-x: auto; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: var(--mono);
-    font-size: 11px;
-  }
-  th {
-    background: var(--surface2);
-    color: var(--text2);
-    font-weight: 600;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--border);
-    text-align: left;
-    white-space: nowrap;
-  }
-  td {
-    padding: 7px 10px;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-    vertical-align: middle;
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #ffffff08; }
-  .num { text-align: right; }
-  .center { text-align: center; }
+/* Generate button */
+.gen-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--hi);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .2s;
+  text-transform: uppercase;
+}
+.gen-btn:hover { background: var(--hi2); transform: translateY(-1px); }
+.gen-btn:active { transform: none; }
 
-  /* ─── Badges / Status ─── */
-  .badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 3px;
-    font-family: var(--mono);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: .05em;
-  }
-  .badge-green { background: #153d25; color: var(--green); }
-  .badge-yellow { background: #3d2e0a; color: var(--yellow); }
-  .badge-red { background: #3d1515; color: var(--red); }
-  .badge-blue { background: #1a2a4a; color: var(--accent); }
-  .badge-grey { background: var(--surface3); color: var(--text3); }
-  .badge-orange { background: #3d2010; color: var(--orange); }
+/* Advanced toggle */
+.adv-toggle {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: .08em;
+  padding: 6px;
+  border-radius: 4px;
+  transition: color .15s;
+}
+.adv-toggle:hover { color: var(--text2); }
+.adv-panel { display: none; }
+.adv-panel.open { display: block; }
+.adv-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.adv-field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  margin-bottom: 3px;
+  letter-spacing: .05em;
+}
+.adv-field input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  outline: none;
+  width: 100%;
+}
+.adv-field input:focus { border-color: var(--hi); }
 
-  /* ─── Metrics ─── */
-  .metric-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-  .metric {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 10px 16px;
-    min-width: 130px;
-  }
-  .metric-label { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-bottom: 4px; }
-  .metric-value { font-family: var(--mono); font-size: 20px; font-weight: 600; color: var(--text); }
-  .metric-sub { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 2px; }
+/* ─────────────────────────────────────────────
+   MAIN CONTENT
+───────────────────────────────────────────── */
+.content {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-  /* ─── Tabs ─── */
-  .tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
-  .tab {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 500;
-    padding: 8px 16px;
-    cursor: pointer;
-    color: var(--text3);
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
-    transition: all .15s;
-  }
-  .tab:hover { color: var(--text2); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
+/* ─────────────────────────────────────────────
+   STATUS BAR
+───────────────────────────────────────────── */
+.status-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.stat-pill .label { color: var(--text3); }
+.stat-pill .val   { color: var(--text); font-weight: 700; }
+.stat-pill.green  { border-color: #1a5c3a; background: #061a10; }
+.stat-pill.green .val { color: var(--green2); }
+.stat-pill.yellow { border-color: #5c3d0a; background: #1a110a; }
+.stat-pill.yellow .val { color: var(--yellow); }
+.stat-pill.red    { border-color: #5c1a1a; background: #1a0a0a; }
+.stat-pill.red .val { color: var(--red); }
+.stat-pill.blue   { border-color: #1a3060; background: #050f22; }
+.stat-pill.blue .val { color: var(--hi2); }
 
-  /* ─── Misc ─── */
-  .separator { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-  .text-mono { font-family: var(--mono); }
-  .text-small { font-size: 11px; color: var(--text2); }
-  .text-accent { color: var(--accent); }
-  .text-green { color: var(--green); }
-  .text-red { color: var(--red); }
-  .text-yellow { color: var(--yellow); }
-  .mt-8 { margin-top: 8px; }
-  .mt-12 { margin-top: 12px; }
-  .mt-16 { margin-top: 16px; }
-  .mb-16 { margin-bottom: 16px; }
-  .bold { font-weight: 600; }
-  .section-title {
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text2);
-    text-transform: uppercase;
-    letter-spacing: .1em;
-    margin-bottom: 12px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--border);
-  }
+/* ─────────────────────────────────────────────
+   VALUATION CARD
+───────────────────────────────────────────── */
+.val-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.val-item { display: flex; flex-direction: column; gap: 2px; }
+.val-label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; }
+.val-num { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+.val-trend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.trend-up   { background: #061a10; border: 1px solid #1a5c3a; color: var(--green2); }
+.trend-down { background: #1a0a0a; border: 1px solid #5c1a1a; color: var(--red); }
+.trend-flat { background: var(--panel2); border: 1px solid var(--border2); color: var(--text3); }
+.val-warn {
+  background: #2a1800;
+  border: 1px solid #7a4400;
+  color: var(--yellow);
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
 
-  /* ─── Toggle switch ─── */
-  .toggle-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text2);
-  }
-  .toggle {
-    position: relative;
-    width: 42px;
-    height: 22px;
-    flex-shrink: 0;
-  }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .slider {
-    position: absolute; inset: 0;
-    background: var(--surface3);
-    border: 1px solid var(--border);
-    border-radius: 11px;
-    cursor: pointer;
-    transition: .2s;
-  }
-  .slider:before {
-    content: '';
-    position: absolute;
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    background: var(--text3);
-    left: 2px; top: 2px;
-    transition: .2s;
-  }
-  .toggle input:checked + .slider { background: var(--accent2); border-color: var(--accent); }
-  .toggle input:checked + .slider:before { transform: translateX(20px); background: #fff; }
-  .toggle-label-on { color: var(--accent); }
+/* ─────────────────────────────────────────────
+   RECOMMENDATION TABLE
+───────────────────────────────────────────── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.card-head {
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.card-head .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hi); }
+.card-body { padding: 0; overflow-x: auto; }
 
-  /* ─── Highlight row ─── */
-  .row-warn td { background: #3d2e0a22 !important; }
-  .row-ok td { background: #153d2522 !important; }
-  .row-crit td { background: #3d151522 !important; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+thead th {
+  background: var(--panel2);
+  color: var(--text3);
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  text-align: left;
+}
+thead th.num { text-align: right; }
+tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #ffffff05; }
+td.num { text-align: right; }
 
-  /* ─── CSV import hint ─── */
-  .hint { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 4px; }
+/* Status badges */
+.badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.b-transfer  { background: #0a1f3a; color: var(--hi2); border: 1px solid #1a4080; }
+.b-sufficient{ background: #061a10; color: var(--green2); border: 1px solid #1a5c3a; }
+.b-partial   { background: #2a1800; color: var(--yellow); border: 1px solid #7a4400; }
+.b-low       { background: #1a0a0a; color: var(--red); border: 1px solid #5c1a1a; }
 
-  /* ─── Scrollable log ─── */
-  .log-box {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 5px;
-    padding: 10px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-    max-height: 260px;
-    overflow-y: auto;
-    line-height: 1.8;
-  }
-  .log-entry { display: flex; gap: 8px; }
-  .log-time { color: var(--text3); flex-shrink: 0; }
-  .log-msg { flex: 1; }
-  .log-ok { color: var(--green); }
-  .log-warn { color: var(--yellow); }
-  .log-info { color: var(--accent); }
+/* Health indicator */
+.health {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.h-green { background: var(--green2); box-shadow: 0 0 6px var(--green); }
+.h-yellow{ background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+.h-red   { background: var(--red);    box-shadow: 0 0 6px var(--red); }
 
-  /* ─── Responsive ─── */
-  @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 780px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+/* Transfer amount highlight */
+.xfer-val {
+  color: var(--green2);
+  font-weight: 700;
+}
+.xfer-zero { color: var(--text3); }
+
+/* Row state classes */
+tr.row-low  td { background: #1a0a0a44 !important; }
+tr.row-warn td { background: #2a180044 !important; }
+tr.row-ok   td { background: #061a1044 !important; }
+
+/* Cost footer */
+.cost-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: var(--panel2);
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text2);
+  flex-wrap: wrap;
+}
+.cost-bar .cost-val { color: var(--yellow); font-weight: 700; font-size: 13px; }
+.cost-bar .sep { color: var(--text3); }
+
+/* ─────────────────────────────────────────────
+   DEMAND & INVENTORY TABLES
+───────────────────────────────────────────── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ─────────────────────────────────────────────
+   EMPTY STATE
+───────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+.empty-state .icon { font-size: 32px; margin-bottom: 10px; }
+.empty-state .msg  { font-size: 11px; letter-spacing: .06em; }
+
+/* ─────────────────────────────────────────────
+   INVENTORY MANUAL ROW
+───────────────────────────────────────────── */
+.inv-entries {
+  margin-top: 8px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.inv-entry-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+}
+.inv-entry-row:last-child { border-bottom: none; }
+.inv-del {
+  color: var(--red);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  background: none;
+  border: none;
+  padding: 0 2px;
+}
+
+/* ─────────────────────────────────────────────
+   SCROLLBAR
+───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ─────────────────────────────────────────────
+   RESPONSIVE
+───────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  .two-col { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────
+   ANIMATION
+───────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.animate { animation: fadeIn .25s ease both; }
 </style>
 </head>
 <body>
 
+<!-- ═══════════ HEADER ═══════════ -->
 <header>
-  <div class="logo">ERP · T1</div>
-  <h1>Transfer Recommender</h1>
-  <div class="subtitle">TOOL 1 · LOGISTICS SIMULATION · v1.0</div>
+  <div class="hdr-badge">ERP · T1</div>
+  <div class="hdr-title">TRANSFER RECOMMENDER</div>
+  <div class="hdr-right">
+    <div id="valDisplay">No valuation data</div>
+    <div id="roundTimer" style="display:none">Round: <span id="timerVal">—</span></div>
+  </div>
 </header>
 
-<main>
+<!-- ═══════════ LAYOUT ═══════════ -->
+<div class="layout">
 
-  <!-- ═══════════════════════════ TAB BAR ═══════════════════════════ -->
-  <div class="tabs" style="margin-top:12px">
-    <div class="tab active" onclick="switchTab('setup')">⚙ Setup</div>
-    <div class="tab" onclick="switchTab('import')">↑ Import Data</div>
-    <div class="tab" onclick="switchTab('inventory')">📦 Inventory</div>
-    <div class="tab" onclick="switchTab('recommend')">→ Recommendations</div>
-    <div class="tab" onclick="switchTab('history')">📋 History & Log</div>
-  </div>
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="sidebar">
 
-  <!-- ═══════════════════════════ SETUP TAB ═══════════════════════════ -->
-  <div class="tab-content active" id="tab-setup">
-    <div class="grid-3">
-
-      <!-- Simulation Config -->
-      <div class="card">
-        <div class="card-header"><div class="dot"></div>Simulation State</div>
-        <div class="card-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Current Round</label>
-              <input type="number" id="currentRound" value="1" min="1">
-            </div>
-            <div class="form-group">
-              <label>Current Step</label>
-              <input type="number" id="currentStep" value="1" min="1">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Shipping Delay (rounds)</label>
-            <input type="number" id="shippingDelay" value="2" min="1" max="10">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Hub Buffer (units)</label>
-              <input type="number" id="hubBuffer" value="50" min="0">
-            </div>
-            <div class="form-group">
-              <label>Safety Stock (units)</label>
-              <input type="number" id="safetyStock" value="20" min="0">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Min Batch Size (units)</label>
-            <input type="number" id="minBatch" value="10" min="1">
-          </div>
-          <div class="form-group">
-            <label>Moving Average Window (rounds)</label>
-            <input type="number" id="maWindow" value="3" min="1" max="10">
-          </div>
+    <!-- MODE -->
+    <div class="sb-section">
+      <div class="sb-head">Logistics Mode</div>
+      <div class="sb-body">
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="btnPull" onclick="setMode('pull')">PULL</button>
+          <button class="mode-btn" id="btnPush" onclick="setMode('push')">PUSH</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;font-family:var(--mono);line-height:1.7">
+          <span id="modeDesc">PULL: Uses last-round sales as demand forecast.</span>
         </div>
       </div>
+    </div>
 
-      <!-- Mode + Costs -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--purple)"></div>Transfer Mode & Costs</div>
-        <div class="card-body">
-          <div class="form-group">
-            <label>Transfer Mode</label>
-            <div class="toggle-row" style="margin-top:8px">
-              <span id="modeLabel" style="color:var(--text2)">PULL</span>
-              <label class="toggle">
-                <input type="checkbox" id="modeToggle" onchange="updateModeLabel()">
-                <span class="slider"></span>
-              </label>
-              <span id="modeLabelRight">PUSH</span>
-            </div>
-            <div class="hint" style="margin-top:8px">PULL = last-round demand + safety stock<br>PUSH = moving avg forecast + safety stock</div>
-          </div>
-          <hr class="separator">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Transport Cost / Shipment ($)</label>
-              <input type="number" id="transportCost" value="100" min="0">
-            </div>
-            <div class="form-group">
-              <label>Procurement Cost / Order ($)</label>
-              <input type="number" id="procureCost" value="1000" min="0" readonly style="opacity:.5">
-            </div>
-          </div>
-          <div class="hint">Procurement cost shown for reference. Procurement logic is not part of Tool 1.</div>
-          <hr class="separator">
-          <div class="form-group">
-            <label>Regions (comma-separated)</label>
-            <input type="text" id="regionList" value="North,South,East,West" placeholder="North,South,East,West">
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="applySetup()">Apply Setup</button>
-          </div>
-        </div>
+    <!-- UPLOADS -->
+    <div class="sb-section">
+      <div class="sb-head">Data Upload</div>
+      <div class="sb-body">
+
+        <!-- Sales -->
+        <label class="upload-btn" id="btnSales">
+          <span class="icon">📊</span>
+          <span>Upload Sales Report</span>
+          <input type="file" accept=".csv,.xlsx,.xls" onchange="handleFile(event,'sales')">
+        </label>
+        <div class="upload-status" id="statusSales">Area · Material · Quantity</div>
+
+        <!-- Inventory -->
+        <label class="upload-btn" id="btnInv">
+          <span class="icon">📦</span>
+          <span>Upload Inventory Report</span>
+          <input type="file" accept=".csv,.xlsx,.xls" onchange="handleFile(event,'inventory')">
+        </label>
+        <div class="upload-status" id="statusInv">Optional — or enter manually below</div>
+
+        <!-- Valuation -->
+        <label class="upload-btn" id="btnVal">
+          <span class="icon">📈</span>
+          <span>Upload Valuation Report</span>
+          <input type="file" accept=".csv,.xlsx,.xls" onchange="handleFile(event,'valuation')">
+        </label>
+        <div class="upload-status" id="statusVal">Optional — Round · Step · Valuation</div>
+
       </div>
+    </div>
 
-      <!-- Cost Summary -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--yellow)"></div>Session Cost Tracker</div>
-        <div class="card-body">
-          <div class="metric-row" style="flex-direction:column; gap:8px">
-            <div class="metric">
-              <div class="metric-label">TOTAL SHIPMENTS SENT</div>
-              <div class="metric-value" id="totalShipments">0</div>
+    <!-- MANUAL INVENTORY -->
+    <div class="sb-section">
+      <div class="sb-head">Manual Inventory Entry</div>
+      <div class="sb-body">
+        <div class="mini-form">
+          <input type="text" id="manProduct" placeholder="Product (e.g. T01)">
+          <select id="manLocation">
+            <option value="HUB">HUB</option>
+            <option value="North">North</option>
+            <option value="South">South</option>
+            <option value="West">West</option>
+          </select>
+          <input type="number" id="manQty" placeholder="Quantity" min="0">
+          <button class="upload-btn" style="margin:0" onclick="addManualInventory()">
+            <span class="icon">＋</span><span>Add Entry</span>
+          </button>
+        </div>
+        <div class="inv-entries" id="manualEntries"></div>
+      </div>
+    </div>
+
+    <!-- GENERATE -->
+    <button class="gen-btn" onclick="generate()">▶ Generate Recommendations</button>
+
+    <!-- ADVANCED -->
+    <div class="adv-toggle" onclick="toggleAdv()">⚙ ADVANCED SETTINGS ▾</div>
+    <div class="adv-panel" id="advPanel">
+      <div class="sb-section">
+        <div class="sb-head">Advanced Config</div>
+        <div class="sb-body">
+          <div class="adv-row">
+            <div class="adv-field">
+              <label>Hub Buffer</label>
+              <input type="number" id="cfgBuffer" value="50" min="0">
             </div>
-            <div class="metric">
-              <div class="metric-label">TOTAL TRANSPORT COST</div>
-              <div class="metric-value" id="totalTransportCost">$0</div>
+            <div class="adv-field">
+              <label>Safety Stock</label>
+              <input type="number" id="cfgSafety" value="20" min="0">
             </div>
-            <div class="metric">
-              <div class="metric-label">ROUNDS SIMULATED</div>
-              <div class="metric-value" id="roundsSimulated">0</div>
+            <div class="adv-field">
+              <label>MA Window</label>
+              <input type="number" id="cfgMA" value="2" min="1">
+            </div>
+            <div class="adv-field">
+              <label>Transport $</label>
+              <input type="number" id="cfgTransport" value="100" min="0">
             </div>
           </div>
         </div>
       </div>
-
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════ IMPORT TAB ═══════════════════════════ -->
-  <div class="tab-content" id="tab-import">
-    <div class="grid-2">
-
-      <!-- Area Sales Report -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--green)"></div>Area Sales Report</div>
-        <div class="card-body">
-          <div class="hint mb-16">Columns: <b>Area, Material Number, Quantity</b> — paste CSV or tab-separated data</div>
-          <div class="form-group">
-            <label>Paste Sales Data</label>
-            <textarea id="salesInput" placeholder="Area,Material Number,Quantity&#10;North,BB-T01,30&#10;South,BB-T01,25&#10;East,BB-T02,40&#10;West,BB-T01,15"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Round this data represents</label>
-            <input type="number" id="salesRound" value="1" min="1">
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="importSales()">Import Sales</button>
-            <button class="btn btn-secondary btn-sm" onclick="loadSampleSales()">Load Sample</button>
-          </div>
-          <div id="salesStatus" class="hint mt-8"></div>
-        </div>
-      </div>
-
-      <!-- Company Valuation + Details -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--yellow)"></div>Company Valuation Report</div>
-        <div class="card-body">
-          <div class="hint mb-16">Columns: <b>Simulation Round, Simulation Step, Company Valuation</b></div>
-          <div class="form-group">
-            <label>Paste Valuation Data</label>
-            <textarea id="valInput" placeholder="Simulation Round,Simulation Step,Company Valuation&#10;1,1,500000&#10;1,2,510000"></textarea>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="importValuation()">Import Valuation</button>
-            <button class="btn btn-secondary btn-sm" onclick="loadSampleValuation()">Load Sample</button>
-          </div>
-          <div id="valStatus" class="hint mt-8"></div>
-          <hr class="separator">
-          <div class="section-title">Details Report (Financial Fields)</div>
-          <div class="form-group">
-            <label>Paste Details Data (any format)</label>
-            <textarea id="detailsInput" placeholder="Any key:value or CSV financial fields..."></textarea>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-secondary" onclick="importDetails()">Import Details</button>
-          </div>
-          <div id="detailsStatus" class="hint mt-8"></div>
-        </div>
-      </div>
-
     </div>
 
-    <!-- Imported Data Preview -->
-    <div class="card mt-16">
-      <div class="card-header"><div class="dot" style="background:var(--accent)"></div>Imported Sales — Preview</div>
-      <div class="card-body">
-        <div class="table-wrap">
-          <table id="salesPreviewTable">
-            <thead><tr><th>Round</th><th>Area/Region</th><th>Material (Raw)</th><th>Material (Normalized)</th><th>Quantity</th></tr></thead>
-            <tbody><tr><td colspan="5" style="color:var(--text3);text-align:center">No data imported yet</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
+  </aside>
 
-  <!-- ═══════════════════════════ INVENTORY TAB ═══════════════════════════ -->
-  <div class="tab-content" id="tab-inventory">
+  <!-- ═══ MAIN CONTENT ═══ -->
+  <main class="content" id="mainContent">
 
-    <div class="grid-2">
-      <!-- Manual Inventory Entry -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--green)"></div>Manual Inventory Override</div>
-        <div class="card-body">
-          <div class="hint mb-16">Enter known actual inventory to reconcile with shadow model. Leave blank to keep shadow estimate.</div>
-          <div class="form-group">
-            <label>Product Code (normalized, e.g. T01)</label>
-            <input type="text" id="invProduct" placeholder="T01">
-          </div>
-          <div class="form-group">
-            <label>Location</label>
-            <select id="invLocation">
-              <option value="HUB">HUB (Main Hub)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Actual Quantity (units)</label>
-            <input type="number" id="invQty" value="0" min="0">
-          </div>
-          <div class="form-group">
-            <label>Reconciliation Note</label>
-            <input type="text" id="invNote" placeholder="Physical count, system sync...">
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" onclick="setInventory()">Set Inventory</button>
-            <button class="btn btn-secondary btn-sm" onclick="loadSampleInventory()">Load Sample Stock</button>
-          </div>
-          <div id="invStatus" class="hint mt-8"></div>
-        </div>
-      </div>
-
-      <!-- Shadow Inventory Model Info -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--purple)"></div>Shadow Inventory Model</div>
-        <div class="card-body">
-          <div class="hint mb-16">Shadow inventory is auto-maintained. Formula per round:</div>
-          <div style="background:var(--bg); border:1px solid var(--border); border-radius:5px; padding:12px; font-family:var(--mono); font-size:11px; color:var(--text2); line-height:2">
-            <div><span style="color:var(--accent)">HUB_est</span> = HUB_prev – Σ(transfers_sent) + Σ(pipeline_arrived)</div>
-            <div><span style="color:var(--green)">REG_est</span> = REG_prev – sales_demand + Σ(arrived_transfers)</div>
-            <div><span style="color:var(--yellow)">PIPELINE</span> = transfers in transit (not yet arrived)</div>
-          </div>
-          <hr class="separator">
-          <div class="section-title">Pipeline Shipments In Transit</div>
-          <div class="table-wrap">
-            <table id="pipelineTable">
-              <thead><tr><th>Product</th><th>Region</th><th>Qty</th><th>Sent Round</th><th>Arrives Round</th><th>Status</th></tr></thead>
-              <tbody id="pipelineBody"><tr><td colspan="6" style="color:var(--text3);text-align:center">No pipeline shipments</td></tr></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+    <!-- Empty state -->
+    <div class="empty-state animate" id="emptyState">
+      <div class="icon">⬆</div>
+      <div class="msg">UPLOAD SALES REPORT AND CLICK GENERATE RECOMMENDATIONS</div>
+      <div style="margin-top:8px;font-size:10px;color:var(--text3)">Supports CSV and Excel (.xlsx) files</div>
     </div>
 
-    <!-- Current Shadow Inventory Table -->
-    <div class="card mt-16">
-      <div class="card-header"><div class="dot"></div>Current Shadow Inventory</div>
-      <div class="card-body">
-        <div class="table-wrap">
-          <table id="shadowTable">
-            <thead><tr><th>Product</th><th>Location</th><th>Shadow Qty</th><th>Last Reconciled</th><th>Reconciled Qty</th><th>Source</th></tr></thead>
-            <tbody id="shadowBody"><tr><td colspan="6" style="color:var(--text3);text-align:center">No inventory set</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════ RECOMMENDATIONS TAB ═══════════════════════════ -->
-  <div class="tab-content" id="tab-recommend">
-
-    <div class="metric-row">
-      <div class="metric">
-        <div class="metric-label">MODE</div>
-        <div class="metric-value" id="recModeBadge" style="font-size:16px;color:var(--accent)">PULL</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">ROUND</div>
-        <div class="metric-value" id="recRound">1</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">PRODUCTS TRACKED</div>
-        <div class="metric-value" id="recProducts">0</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">REGIONS</div>
-        <div class="metric-value" id="recRegions">0</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">TRANSFERS RECOMMENDED</div>
-        <div class="metric-value" id="recTransfers">0</div>
-      </div>
-      <div class="metric">
-        <div class="metric-label">EST. COST</div>
-        <div class="metric-value" id="recCost" style="color:var(--yellow)">$0</div>
-      </div>
-    </div>
-
-    <div class="btn-row mb-16">
-      <button class="btn btn-primary" onclick="runRecommendations()">▶ Run Recommendations</button>
-      <button class="btn btn-success" onclick="confirmTransfers()">✓ Confirm All Transfers</button>
-      <button class="btn btn-secondary" onclick="confirmTransfers(true)">✓ Confirm Selected Only</button>
-      <button class="btn btn-danger btn-sm" onclick="clearRecommendations()">✗ Clear</button>
-    </div>
-
-    <!-- Main Recommendation Table -->
-    <div class="card">
-      <div class="card-header"><div class="dot" style="background:var(--green)"></div>Transfer Recommendations</div>
-      <div class="card-body">
-        <div class="table-wrap">
-          <table id="recTable">
-            <thead id="recTableHead">
-              <tr>
-                <th>Sel</th>
-                <th>Product</th>
-                <th>Hub Est. Stock</th>
-                <th>Hub Pipeline Out</th>
-                <th>Hub Buffer</th>
-                <th>Hub Available</th>
-                <!-- Region columns injected dynamically -->
-                <th>Total Outbound</th>
-                <th>Buffer Remaining</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="recTableBody">
-              <tr><td colspan="9" style="color:var(--text3);text-align:center">Run recommendations to see results</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Demand Forecast Detail -->
-    <div class="card mt-16">
-      <div class="card-header"><div class="dot" style="background:var(--yellow)"></div>Demand Forecast Detail</div>
-      <div class="card-body">
-        <div class="table-wrap">
-          <table id="forecastTable">
-            <thead><tr><th>Product</th><th>Region</th><th>Last Round Demand</th><th>MA Forecast</th><th>Safety Stock</th><th>Regional Inv. Est</th><th>Regional Pipeline In</th><th>Net Need</th><th>Mode Used</th></tr></thead>
-            <tbody id="forecastBody">
-              <tr><td colspan="9" style="color:var(--text3);text-align:center">Run recommendations to see forecast</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ═══════════════════════════ HISTORY TAB ═══════════════════════════ -->
-  <div class="tab-content" id="tab-history">
-    <div class="grid-2">
-
-      <!-- Transfer History -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--orange)"></div>Transfer History Log</div>
-        <div class="card-body">
-          <div class="table-wrap">
-            <table id="historyTable">
-              <thead><tr><th>#</th><th>Round</th><th>Product</th><th>Region</th><th>Qty</th><th>Cost</th><th>Arrives</th><th>Status</th></tr></thead>
-              <tbody id="historyBody">
-                <tr><td colspan="8" style="color:var(--text3);text-align:center">No transfers recorded</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Activity Log -->
-      <div class="card">
-        <div class="card-header"><div class="dot" style="background:var(--text3)"></div>Activity Log</div>
-        <div class="card-body">
-          <div class="log-box" id="activityLog">
-            <div class="log-entry"><span class="log-time">--:--</span><span class="log-msg log-info">System initialized. Ready.</span></div>
-          </div>
-          <div class="btn-row" style="margin-top:8px">
-            <button class="btn btn-secondary btn-sm" onclick="clearLog()">Clear Log</button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Reconciliation Section -->
-    <div class="card mt-16">
-      <div class="card-header"><div class="dot" style="background:var(--purple)"></div>Inventory Reconciliation</div>
-      <div class="card-body">
-        <div class="hint mb-16">Compare manual inventory entries with shadow model estimates. Discrepancies suggest pipeline or sales data gaps.</div>
-        <div class="table-wrap">
-          <table id="reconcileTable">
-            <thead><tr><th>Product</th><th>Location</th><th>Shadow Est.</th><th>Actual (Manual)</th><th>Discrepancy</th><th>% Diff</th><th>Assessment</th></tr></thead>
-            <tbody id="reconcileBody">
-              <tr><td colspan="7" style="color:var(--text3);text-align:center">No reconciliation data available</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="btn-row mt-8">
-          <button class="btn btn-secondary" onclick="runReconciliation()">Refresh Reconciliation</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sales History -->
-    <div class="card mt-16">
-      <div class="card-header"><div class="dot" style="background:var(--green)"></div>Sales Demand History (by Round)</div>
-      <div class="card-body">
-        <div class="table-wrap">
-          <table id="salesHistTable">
-            <thead><tr><th>Round</th><th>Product</th><th>Region</th><th>Quantity Sold</th></tr></thead>
-            <tbody id="salesHistBody">
-              <tr><td colspan="4" style="color:var(--text3);text-align:center">No sales history</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-</main>
+  </main>
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // STATE
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
-const state = {
-  // Config
-  currentRound: 1,
-  currentStep: 1,
-  shippingDelay: 2,
-  hubBuffer: 50,
-  safetyStock: 20,
-  minBatch: 10,
-  maWindow: 3,
-  mode: 'pull', // 'pull' | 'push'
-  transportCost: 100,
-  regions: ['North', 'South', 'East', 'West'],
-
-  // Data
-  // salesHistory[round][product][region] = qty
-  salesHistory: {},
-
-  // shadow inventory: { "T01:HUB": qty, "T01:North": qty, ... }
-  shadowInventory: {},
-
-  // manual (actual) inventory overrides
-  actualInventory: {},
-
-  // pipeline: [ { id, product, region, qty, sentRound, arrivesRound, status } ]
-  pipeline: [],
-
-  // transfer history (confirmed)
-  transferHistory: [],
-
-  // last recommendations (pending confirm)
-  pendingRecs: [],
-
-  // metrics
-  totalShipments: 0,
-  totalTransportCost: 0,
-  roundsSimulated: 0,
-
-  // valuation
-  valuation: [],
+/* Raw data */
+const raw = {
+  sales: [],        // [{Area, MaterialNumber, Quantity}]
+  inventory: [],    // [{Product, Location, Quantity}]
+  valuation: []     // [{round, step, valuation}]
 };
 
-let recIdCounter = 0;
+/* Processed structures */
+// sales[product][region] = qty  (current/last round)
+// salesHistory[round][product][region] = qty
+let sales = {};
+let salesHistory = {};
+let inventory = {};   // inventory[product][location] = qty
+let manualInventory = []; // [{product, location, qty}]
+let valuationHistory = [];
 
-// ═══════════════════════════════════════════════════════════════════
+let mode = 'pull';
+
+// ═══════════════════════════════════════════════════════════
 // UTILS
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
-function normalizeMaterial(raw) {
-  if (!raw) return raw;
-  const s = raw.toString().trim().toUpperCase();
-  // BB-T01 → T01, T01 → T01, MAT-001 → MAT-001 (strip common prefixes)
-  const m = s.match(/(?:BB-|AA-|CC-|MAT-|PRD-)?([A-Z0-9]+(?:-[A-Z0-9]+)*)$/);
+/** Normalize BB-T01 → T01 */
+function normMat(s) {
+  if (!s) return '';
+  s = String(s).trim().toUpperCase();
+  const m = s.match(/(?:[A-Z]+-)?([A-Z0-9]+)$/);
   return m ? m[1] : s;
 }
 
-function now() {
-  return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
+/** Config helpers */
+const cfg = () => ({
+  buffer:    parseInt(document.getElementById('cfgBuffer').value) || 50,
+  safety:    parseInt(document.getElementById('cfgSafety').value) || 20,
+  maWindow:  parseInt(document.getElementById('cfgMA').value) || 2,
+  transport: parseInt(document.getElementById('cfgTransport').value) || 100
+});
 
-function log(msg, type = 'info') {
-  const box = document.getElementById('activityLog');
-  const entry = document.createElement('div');
-  entry.className = 'log-entry';
-  entry.innerHTML = `<span class="log-time">${now()}</span><span class="log-msg log-${type}">${msg}</span>`;
-  box.appendChild(entry);
-  box.scrollTop = box.scrollHeight;
-}
-
-function clearLog() {
-  document.getElementById('activityLog').innerHTML = '';
-  log('Log cleared.', 'info');
-}
-
+/** Parse CSV string → array of objects */
 function parseCSV(text) {
-  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
-  if (!lines.length) return [];
-  const header = lines[0].split(/[,\t]/).map(h => h.trim());
+  const lines = text.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(/[,\t]/).map(h => h.trim().replace(/^"|"$/g,''));
   return lines.slice(1).map(line => {
-    const vals = line.split(/[,\t]/).map(v => v.trim());
+    const vals = line.split(/[,\t]/).map(v => v.trim().replace(/^"|"$/g,''));
     const obj = {};
-    header.forEach((h, i) => obj[h] = vals[i] || '');
+    headers.forEach((h, i) => obj[h] = vals[i] ?? '');
     return obj;
   });
 }
 
-function invKey(product, location) { return `${product}:${location}`; }
-
-function getShadow(product, location) {
-  return state.shadowInventory[invKey(product, location)] || 0;
+/** Parse SheetJS workbook → first sheet as array of objects */
+function parseXLSX(buffer) {
+  const wb = XLSX.read(buffer, { type: 'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws, { defval: '' });
 }
 
-function setShadow(product, location, qty) {
-  state.shadowInventory[invKey(product, location)] = Math.max(0, qty);
+// ═══════════════════════════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════════════════════════
+
+function handleFile(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let rows;
+    if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+      rows = parseCSV(e.target.result);
+    } else {
+      const buf = new Uint8Array(e.target.result);
+      rows = parseXLSX(buf);
+    }
+
+    if (type === 'sales')     processSales(rows, file.name);
+    if (type === 'inventory') processInventory(rows, file.name);
+    if (type === 'valuation') processValuation(rows, file.name);
+  };
+
+  if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
+    reader.readAsText(file);
+  } else {
+    reader.readAsArrayBuffer(file);
+  }
 }
 
-function getActual(product, location) {
-  const k = invKey(product, location);
-  return state.actualInventory[k] !== undefined ? state.actualInventory[k] : null;
-}
-
-function pipelineOutbound(product, fromLocation = 'HUB') {
-  // pipeline qty still in transit from hub
-  return state.pipeline
-    .filter(p => p.product === product && p.status === 'transit')
-    .reduce((s, p) => s + p.qty, 0);
-}
-
-function pipelineInbound(product, toRegion) {
-  return state.pipeline
-    .filter(p => p.product === product && p.region === toRegion && p.status === 'transit')
-    .reduce((s, p) => s + p.qty, 0);
-}
-
-function allProducts() {
-  const prods = new Set();
-  Object.keys(state.salesHistory).forEach(round => {
-    Object.keys(state.salesHistory[round]).forEach(prod => prods.add(prod));
-  });
-  Object.keys(state.shadowInventory).forEach(k => prods.add(k.split(':')[0]));
-  return [...prods];
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// SETUP
-// ═══════════════════════════════════════════════════════════════════
-
-function applySetup() {
-  state.currentRound = parseInt(document.getElementById('currentRound').value) || 1;
-  state.currentStep  = parseInt(document.getElementById('currentStep').value) || 1;
-  state.shippingDelay = parseInt(document.getElementById('shippingDelay').value) || 2;
-  state.hubBuffer     = parseInt(document.getElementById('hubBuffer').value) || 50;
-  state.safetyStock   = parseInt(document.getElementById('safetyStock').value) || 20;
-  state.minBatch      = parseInt(document.getElementById('minBatch').value) || 10;
-  state.maWindow      = parseInt(document.getElementById('maWindow').value) || 3;
-  state.transportCost = parseInt(document.getElementById('transportCost').value) || 100;
-  state.mode          = document.getElementById('modeToggle').checked ? 'push' : 'pull';
-
-  const regText = document.getElementById('regionList').value;
-  state.regions = regText.split(',').map(r => r.trim()).filter(Boolean);
-
-  // Update location dropdown
-  const locSelect = document.getElementById('invLocation');
-  locSelect.innerHTML = '<option value="HUB">HUB (Main Hub)</option>';
-  state.regions.forEach(r => {
-    const opt = document.createElement('option');
-    opt.value = r; opt.textContent = r;
-    locSelect.appendChild(opt);
-  });
-
-  updateMetrics();
-  log(`Setup applied — Round ${state.currentRound}, Mode: ${state.mode.toUpperCase()}, Delay: ${state.shippingDelay}R, Buffer: ${state.hubBuffer}, Safety: ${state.safetyStock}`, 'ok');
-}
-
-function updateModeLabel() {
-  const on = document.getElementById('modeToggle').checked;
-  document.getElementById('modeLabel').style.color = on ? 'var(--text3)' : 'var(--accent)';
-  document.getElementById('modeLabelRight').style.color = on ? 'var(--accent)' : 'var(--text3)';
-  state.mode = on ? 'push' : 'pull';
-}
-
-function updateMetrics() {
-  document.getElementById('totalShipments').textContent = state.totalShipments;
-  document.getElementById('totalTransportCost').textContent = '$' + state.totalTransportCost.toLocaleString();
-  document.getElementById('roundsSimulated').textContent = state.roundsSimulated;
-  document.getElementById('recModeBadge').textContent = state.mode.toUpperCase();
-  document.getElementById('recRound').textContent = state.currentRound;
-  document.getElementById('recProducts').textContent = allProducts().length;
-  document.getElementById('recRegions').textContent = state.regions.length;
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// IMPORT
-// ═══════════════════════════════════════════════════════════════════
-
-function importSales() {
-  const text = document.getElementById('salesInput').value;
-  const round = parseInt(document.getElementById('salesRound').value) || state.currentRound;
-  const rows = parseCSV(text);
-  if (!rows.length) { document.getElementById('salesStatus').textContent = '⚠ No data parsed.'; return; }
-
+/* ── Sales processing ── */
+function processSales(rows, fname) {
+  sales = {};
   let count = 0;
-  if (!state.salesHistory[round]) state.salesHistory[round] = {};
 
   rows.forEach(row => {
-    const area = (row['Area'] || row['area'] || '').trim();
-    const matRaw = (row['Material Number'] || row['material number'] || row['Material'] || '').trim();
-    const qty = parseFloat(row['Quantity'] || row['quantity'] || 0) || 0;
+    // Flexible column matching
+    const area = (row['Area'] || row['area'] || row['Region'] || row['region'] || '').toString().trim();
+    const matRaw = (row['Material Number'] || row['MaterialNumber'] || row['Material'] || row['material'] || '').toString().trim();
+    const qty = parseFloat(row['Quantity'] || row['quantity'] || row['Qty'] || 0) || 0;
     if (!area || !matRaw) return;
-    const mat = normalizeMaterial(matRaw);
-    if (!state.salesHistory[round][mat]) state.salesHistory[round][mat] = {};
-    state.salesHistory[round][mat][area] = (state.salesHistory[round][mat][area] || 0) + qty;
-
-    // Update shadow regional inventory (deduct sales)
-    const curShadow = getShadow(mat, area);
-    setShadow(mat, area, curShadow - qty);
+    const mat = normMat(matRaw);
+    if (!sales[mat]) sales[mat] = {};
+    sales[mat][area] = (sales[mat][area] || 0) + qty;
     count++;
   });
 
-  document.getElementById('salesStatus').innerHTML = `<span style="color:var(--green)">✓ Imported ${count} sales records for round ${round}</span>`;
-  log(`Imported ${count} sales rows for round ${round}`, 'ok');
-  renderSalesPreview();
-  renderSalesHistory();
-  updateMetrics();
+  document.getElementById('btnSales').classList.add('loaded');
+  document.getElementById('statusSales').textContent = `✓ ${count} rows — ${Object.keys(sales).length} products`;
+  document.getElementById('statusSales').className = 'upload-status ok';
 }
 
-function renderSalesPreview() {
-  const tbody = document.querySelector('#salesPreviewTable tbody');
-  const rows = [];
-  Object.entries(state.salesHistory).forEach(([round, products]) => {
-    Object.entries(products).forEach(([mat, regions]) => {
-      Object.entries(regions).forEach(([region, qty]) => {
-        rows.push({ round, mat, region, qty });
-      });
-    });
+/* ── Inventory processing ── */
+function processInventory(rows, fname) {
+  inventory = {};
+  let count = 0;
+
+  rows.forEach(row => {
+    const prod = normMat(row['Product'] || row['product'] || row['Material'] || '');
+    const loc  = (row['Location'] || row['location'] || row['Warehouse'] || '').toString().trim();
+    const qty  = parseFloat(row['Quantity'] || row['quantity'] || row['Qty'] || 0) || 0;
+    if (!prod || !loc) return;
+    if (!inventory[prod]) inventory[prod] = {};
+    inventory[prod][loc] = qty;
+    count++;
   });
-  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text3);text-align:center">No data</td></tr>'; return; }
-  tbody.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.round}</td>
-      <td>${r.region}</td>
-      <td style="color:var(--text3)">—</td>
-      <td class="text-accent">${r.mat}</td>
-      <td class="num">${r.qty}</td>
-    </tr>`).join('');
+
+  document.getElementById('btnInv').classList.add('loaded');
+  document.getElementById('statusInv').textContent = `✓ ${count} rows — ${Object.keys(inventory).length} products`;
+  document.getElementById('statusInv').className = 'upload-status ok';
 }
 
-function loadSampleSales() {
-  document.getElementById('salesInput').value =
-`Area,Material Number,Quantity
-North,BB-T01,32
-South,BB-T01,28
-East,BB-T01,45
-West,BB-T01,18
-North,BB-T02,15
-South,BB-T02,20
-East,BB-T02,10
-West,BB-T02,25
-North,BB-T03,8
-South,BB-T03,12`;
-  document.getElementById('salesRound').value = state.currentRound;
+/* ── Valuation processing ── */
+function processValuation(rows, fname) {
+  valuationHistory = rows.map(row => ({
+    round:     parseInt(row['Simulation Round'] || row['Round'] || row['round'] || 0),
+    step:      parseInt(row['Simulation Step']  || row['Step']  || row['step']  || 0),
+    valuation: parseFloat(String(row['Company Valuation'] || row['Valuation'] || row['valuation'] || 0).replace(/[$,]/g,'')) || 0
+  })).filter(r => r.valuation > 0);
+
+  document.getElementById('btnVal').classList.add('loaded');
+  document.getElementById('statusVal').textContent = `✓ ${valuationHistory.length} entries`;
+  document.getElementById('statusVal').className = 'upload-status ok';
+  updateValDisplay();
 }
 
-function importValuation() {
-  const text = document.getElementById('valInput').value;
-  const rows = parseCSV(text);
-  if (!rows.length) { document.getElementById('valStatus').textContent = '⚠ No data'; return; }
-  state.valuation = rows.map(r => ({
-    round: parseInt(r['Simulation Round'] || 0),
-    step: parseInt(r['Simulation Step'] || 0),
-    valuation: parseFloat((r['Company Valuation'] || '0').replace(/[$,]/g, '')) || 0
-  }));
-  document.getElementById('valStatus').innerHTML = `<span style="color:var(--green)">✓ ${state.valuation.length} valuation entries</span>`;
-  log(`Valuation data imported: ${state.valuation.length} entries`, 'ok');
+// ═══════════════════════════════════════════════════════════
+// MODE
+// ═══════════════════════════════════════════════════════════
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnPull').classList.toggle('active', m === 'pull');
+  document.getElementById('btnPush').classList.toggle('active', m === 'push');
+  document.getElementById('modeDesc').textContent = m === 'pull'
+    ? 'PULL: Uses last-round sales as demand forecast.'
+    : 'PUSH: Uses moving average of recent rounds as forecast.';
 }
 
-function loadSampleValuation() {
-  document.getElementById('valInput').value =
-`Simulation Round,Simulation Step,Company Valuation
-1,1,500000
-1,2,510000
-2,1,520000
-2,2,515000`;
+// ═══════════════════════════════════════════════════════════
+// MANUAL INVENTORY
+// ═══════════════════════════════════════════════════════════
+
+function addManualInventory() {
+  const prod = normMat(document.getElementById('manProduct').value.trim());
+  const loc  = document.getElementById('manLocation').value;
+  const qty  = parseInt(document.getElementById('manQty').value) || 0;
+  if (!prod) return;
+
+  // Remove existing entry for same product+location
+  manualInventory = manualInventory.filter(e => !(e.product === prod && e.location === loc));
+  manualInventory.push({ product: prod, location: loc, qty });
+
+  document.getElementById('manProduct').value = '';
+  document.getElementById('manQty').value = '';
+  renderManualEntries();
 }
 
-function importDetails() {
-  document.getElementById('detailsStatus').innerHTML = `<span style="color:var(--green)">✓ Details noted (stored for reference)</span>`;
-  log('Details report imported (reference only)', 'info');
+function removeManual(index) {
+  manualInventory.splice(index, 1);
+  renderManualEntries();
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// INVENTORY
-// ═══════════════════════════════════════════════════════════════════
-
-function setInventory() {
-  const product  = normalizeMaterial(document.getElementById('invProduct').value.trim());
-  const location = document.getElementById('invLocation').value;
-  const qty      = parseInt(document.getElementById('invQty').value) || 0;
-  const note     = document.getElementById('invNote').value.trim();
-
-  if (!product) { document.getElementById('invStatus').textContent = '⚠ Enter product code'; return; }
-
-  const k = invKey(product, location);
-  state.actualInventory[k] = { qty, round: state.currentRound, note };
-  // Reconcile shadow to actual
-  setShadow(product, location, qty);
-
-  document.getElementById('invStatus').innerHTML = `<span style="color:var(--green)">✓ Set ${product} @ ${location} = ${qty}</span>`;
-  log(`Inventory set: ${product} @ ${location} = ${qty} (${note || 'manual'})`, 'ok');
-  renderShadowTable();
-  renderReconciliation();
+function renderManualEntries() {
+  const container = document.getElementById('manualEntries');
+  if (!manualInventory.length) { container.innerHTML = ''; return; }
+  container.innerHTML = manualInventory.map((e, i) => `
+    <div class="inv-entry-row">
+      <span>${e.product} @ ${e.location}</span>
+      <span style="color:var(--text)">${e.qty}</span>
+      <button class="inv-del" onclick="removeManual(${i})">×</button>
+    </div>`).join('');
 }
 
-function loadSampleInventory() {
-  const samples = [
-    { p: 'T01', l: 'HUB',   q: 300 },
-    { p: 'T01', l: 'North', q: 20  },
-    { p: 'T01', l: 'South', q: 15  },
-    { p: 'T01', l: 'East',  q: 10  },
-    { p: 'T01', l: 'West',  q: 25  },
-    { p: 'T02', l: 'HUB',   q: 200 },
-    { p: 'T02', l: 'North', q: 10  },
-    { p: 'T02', l: 'South', q: 8   },
-    { p: 'T02', l: 'East',  q: 5   },
-    { p: 'T02', l: 'West',  q: 12  },
-    { p: 'T03', l: 'HUB',   q: 150 },
-    { p: 'T03', l: 'North', q: 5   },
-    { p: 'T03', l: 'South', q: 7   },
-  ];
-  samples.forEach(s => {
-    const k = invKey(s.p, s.l);
-    state.actualInventory[k] = { qty: s.q, round: state.currentRound, note: 'sample' };
-    setShadow(s.p, s.l, s.q);
-  });
-  log('Sample inventory loaded', 'ok');
-  renderShadowTable();
-  updateMetrics();
-}
+// ═══════════════════════════════════════════════════════════
+// DEMAND FORECAST
+// ═══════════════════════════════════════════════════════════
 
-function renderShadowTable() {
-  const tbody = document.getElementById('shadowBody');
-  const keys = Object.keys(state.shadowInventory);
-  if (!keys.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text3);text-align:center">No inventory</td></tr>';
-    return;
-  }
-  tbody.innerHTML = keys.map(k => {
-    const [product, location] = k.split(':');
-    const shadowQty = state.shadowInventory[k];
-    const actual = state.actualInventory[k];
-    return `<tr>
-      <td class="text-accent">${product}</td>
-      <td>${location}</td>
-      <td class="num bold">${shadowQty}</td>
-      <td>${actual ? 'Round ' + actual.round : '—'}</td>
-      <td class="num">${actual ? actual.qty : '—'}</td>
-      <td style="color:var(--text3)">${actual ? actual.note || 'manual' : 'shadow'}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderPipelineTable() {
-  const tbody = document.getElementById('pipelineBody');
-  if (!state.pipeline.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text3);text-align:center">No pipeline shipments</td></tr>';
-    return;
-  }
-  tbody.innerHTML = state.pipeline.map(p => {
-    const statusBadge = p.status === 'transit'
-      ? `<span class="badge badge-yellow">TRANSIT</span>`
-      : `<span class="badge badge-green">DELIVERED</span>`;
-    return `<tr>
-      <td class="text-accent">${p.product}</td>
-      <td>${p.region}</td>
-      <td class="num">${p.qty}</td>
-      <td class="num">${p.sentRound}</td>
-      <td class="num">${p.arrivesRound}</td>
-      <td>${statusBadge}</td>
-    </tr>`;
-  }).join('');
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// DEMAND CALCULATION
-// ═══════════════════════════════════════════════════════════════════
-
-function getLastRoundDemand(product, region) {
-  const r = state.salesHistory[state.currentRound - 1];
-  if (!r || !r[product]) return 0;
-  return r[product][region] || 0;
-}
-
-function getMovingAverage(product, region) {
-  const win = state.maWindow;
-  let total = 0, count = 0;
-  for (let r = state.currentRound - 1; r >= Math.max(1, state.currentRound - win); r--) {
-    const round = state.salesHistory[r];
-    if (round && round[product] && round[product][region] !== undefined) {
-      total += round[product][region];
-      count++;
-    }
-  }
-  return count > 0 ? total / count : 0;
-}
-
+/**
+ * Pull mode: last round sales (= raw sales upload, treated as last round)
+ * Push mode: moving average — in single-file scenario, use sales data as current round
+ * and salesHistory for prior rounds
+ */
 function getForecast(product, region) {
-  if (state.mode === 'pull') {
-    return Math.ceil(getLastRoundDemand(product, region));
+  if (mode === 'pull') {
+    // Use sales from most recently uploaded file
+    return (sales[product] && sales[product][region]) || 0;
   } else {
-    return Math.ceil(getMovingAverage(product, region));
-  }
-}
+    // Moving average: collect history
+    const c = cfg();
+    const window = c.maWindow;
+    const allRounds = Object.keys(salesHistory).map(Number).sort((a,b)=>b-a).slice(0, window);
 
-// ═══════════════════════════════════════════════════════════════════
-// ADVANCE ROUND (process arrivals)
-// ═══════════════════════════════════════════════════════════════════
-
-function processArrivals() {
-  state.pipeline.forEach(p => {
-    if (p.status === 'transit' && p.arrivesRound <= state.currentRound) {
-      p.status = 'delivered';
-      setShadow(p.product, p.region, getShadow(p.product, p.region) + p.qty);
-      log(`Pipeline arrived: ${p.qty}x ${p.product} → ${p.region} (sent R${p.sentRound})`, 'ok');
+    if (!allRounds.length) {
+      // Fallback to current sales
+      return (sales[product] && sales[product][region]) || 0;
     }
-  });
+
+    let total = 0, count = 0;
+    allRounds.forEach(r => {
+      const v = salesHistory[r]?.[product]?.[region] || 0;
+      total += v; count++;
+    });
+    return count > 0 ? total / count : 0;
+  }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// RECOMMENDATIONS
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// INVENTORY RESOLUTION
+// ═══════════════════════════════════════════════════════════
 
-function runRecommendations() {
-  applySetup(); // sync config
-  processArrivals();
+/**
+ * Get best available inventory for product+location:
+ * 1. Manual entry (highest priority)
+ * 2. Uploaded inventory report
+ * 3. 0 (no data)
+ */
+function getInventory(product, location) {
+  // Check manual entries first
+  const manual = manualInventory.find(e => e.product === product && e.location === location);
+  if (manual) return manual.qty;
 
-  const products = allProducts();
-  if (!products.length) {
-    log('⚠ No products tracked. Import sales or set inventory first.', 'warn');
-    return;
+  // Check uploaded inventory
+  if (inventory[product] && inventory[product][location] !== undefined) {
+    return inventory[product][location];
   }
+  return 0;
+}
 
-  state.pendingRecs = [];
-  const forecastRows = [];
+// ═══════════════════════════════════════════════════════════
+// MAIN RECOMMENDATION LOGIC
+// ═══════════════════════════════════════════════════════════
+
+function computeRecommendations() {
+  const c = cfg();
+
+  // Get all products from sales + inventory
+  const products = [...new Set([
+    ...Object.keys(sales),
+    ...Object.keys(inventory),
+    ...manualInventory.map(e => e.product)
+  ])].filter(Boolean).sort();
+
+  // Default regions (can be extended from data)
+  const regions = [...new Set([
+    'North','South','West',
+    ...Object.values(sales).flatMap(s => Object.keys(s)),
+    ...Object.values(inventory).flatMap(inv => Object.keys(inv).filter(k => k !== 'HUB'))
+  ])].filter(k => k !== 'HUB').sort();
+
+  const results = [];
 
   products.forEach(product => {
-    const hubKey = invKey(product, 'HUB');
-    const hubEst = getShadow(product, 'HUB');
-    const hubPipelineOut = pipelineOutbound(product);
-    const hubAvailable = hubEst - state.hubBuffer;
+    /* ── Hub stock ── */
+    const hubStock = getInventory(product, 'HUB');
 
-    // Compute need per region
-    const regionNeeds = [];
-    state.regions.forEach(region => {
-      const forecast = getForecast(product, region);
-      const regEst   = getShadow(product, region);
-      const regPipeIn = pipelineInbound(product, region);
-      const netNeed  = Math.max(0, forecast + state.safetyStock - regEst - regPipeIn);
+    /* ── Hub available (protecting buffer) ── */
+    // hub_available = hub_stock - hub_buffer
+    const hubAvailable = Math.max(0, hubStock - c.buffer);
 
-      forecastRows.push({
-        product, region,
-        lastDemand: getLastRoundDemand(product, region),
-        maForecast: getMovingAverage(product, region),
-        safetyStock: state.safetyStock,
-        regEst,
-        regPipeIn,
-        netNeed,
-        modeUsed: state.mode
-      });
-
-      if (netNeed >= state.minBatch) {
-        regionNeeds.push({ region, netNeed });
-      }
+    /* ── Per-region requirements ── */
+    const regionData = regions.map(region => {
+      const forecast   = getForecast(product, region);          // Step 6
+      const targetStock = forecast + c.safety;                  // Step 7
+      const regionInv  = getInventory(product, region);         // current regional stock
+      const inTransit  = 0;                                     // (pipeline — future enhancement)
+      // net_requirement = target - current_regional - in_transit (Step 8)
+      const netReq = Math.max(0, targetStock - regionInv - inTransit);
+      const soldQty = (sales[product] && sales[product][region]) || 0;
+      return { region, forecast, targetStock, regionInv, inTransit, netReq, soldQty };
     });
 
-    // Sort by demand priority (highest need first)
-    regionNeeds.sort((a, b) => b.netNeed - a.netNeed);
+    /* ── Sort by highest demand for priority allocation (Step 10) ── */
+    const sorted = [...regionData].sort((a, b) => b.netReq - a.netReq);
 
-    // Allocate from available hub stock
-    let remaining = Math.max(0, hubAvailable - hubPipelineOut);
+    /* ── Allocate transfers ── */
+    let remaining = hubAvailable;
     const transfers = {};
-    state.regions.forEach(r => transfers[r] = 0);
-
-    regionNeeds.forEach(({ region, netNeed }) => {
-      if (remaining <= 0) return;
-      const toSend = Math.min(netNeed, remaining);
-      if (toSend >= state.minBatch) {
-        transfers[region] = toSend;
-        remaining -= toSend;
-      }
+    sorted.forEach(rd => {
+      const xfer = Math.min(rd.netReq, remaining);
+      transfers[rd.region] = xfer > 0 ? Math.floor(xfer) : 0;
+      remaining -= xfer;
     });
 
     const totalOutbound = Object.values(transfers).reduce((a, b) => a + b, 0);
-    const bufferRemaining = hubEst - totalOutbound - hubPipelineOut;
-    const hasTransfers = totalOutbound > 0;
+    const totalNetReq   = regionData.reduce((a, r) => a + r.netReq, 0);
+    const hubRemaining  = hubStock - totalOutbound;
 
-    let status = 'OK';
-    if (hubEst <= state.hubBuffer) status = 'LOW_STOCK';
-    else if (totalOutbound < regionNeeds.reduce((s, r) => s + r.netNeed, 0)) status = 'PARTIAL';
-    else if (hasTransfers) status = 'TRANSFER';
-    else status = 'SUFFICIENT';
+    /* ── Status (Step 11) ── */
+    let status;
+    if (hubStock <= c.buffer)            status = 'low';
+    else if (totalOutbound < totalNetReq && totalOutbound > 0) status = 'partial';
+    else if (totalOutbound === 0)         status = 'sufficient';
+    else                                  status = 'transfer';
 
-    state.pendingRecs.push({
-      id: ++recIdCounter,
-      product, hubEst, hubPipelineOut, hubAvailable,
-      transfers, totalOutbound,
-      bufferRemaining,
-      status, selected: true
+    results.push({
+      product, hubStock, hubAvailable, hubRemaining,
+      regionData, transfers, totalOutbound, status,
+      totalNetReq
     });
   });
 
-  renderRecommendationTable();
-  renderForecastTable(forecastRows);
-
-  const totalTransfers = state.pendingRecs.filter(r => r.totalOutbound > 0).length;
-  const totalCost = state.pendingRecs.reduce((s, r) => {
-    return s + Object.values(r.transfers).filter(v => v > 0).length * state.transportCost;
-  }, 0);
-
-  document.getElementById('recTransfers').textContent = totalTransfers;
-  document.getElementById('recCost').textContent = '$' + totalCost.toLocaleString();
-  document.getElementById('recModeBadge').textContent = state.mode.toUpperCase();
-  updateMetrics();
-  log(`Recommendations generated — ${products.length} products, ${totalTransfers} with transfers, est. cost $${totalCost}`, 'ok');
+  return { results, regions, c };
 }
 
-function renderRecommendationTable() {
-  const thead = document.getElementById('recTableHead');
-  const tbody = document.getElementById('recTableBody');
-  const regions = state.regions;
+// ═══════════════════════════════════════════════════════════
+// VALUATION ANALYSIS
+// ═══════════════════════════════════════════════════════════
 
-  // Build header
-  thead.innerHTML = `<tr>
-    <th>Sel</th>
+function analyzeValuation() {
+  if (valuationHistory.length < 2) return null;
+  const sorted = [...valuationHistory].sort((a, b) =>
+    (a.round * 100 + a.step) - (b.round * 100 + b.step)
+  );
+  const latest   = sorted[sorted.length - 1];
+  const previous = sorted[sorted.length - 2];
+  const change   = latest.valuation - previous.valuation;
+  return { latest, previous, change };
+}
+
+function updateValDisplay() {
+  const analysis = analyzeValuation();
+  const el = document.getElementById('valDisplay');
+  if (!analysis) { el.textContent = 'No valuation data'; return; }
+  const { latest, change } = analysis;
+  const sign  = change >= 0 ? '▲' : '▼';
+  const color = change >= 0 ? 'var(--green2)' : 'var(--red)';
+  el.innerHTML = `
+    <span style="color:var(--text2)">Valuation</span>
+    <span style="color:var(--text);margin:0 6px">$${latest.valuation.toLocaleString()}</span>
+    <span style="color:${color}">${sign} $${Math.abs(change).toLocaleString()}</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+
+function generate() {
+  if (!Object.keys(sales).length && !Object.keys(inventory).length && !manualInventory.length) {
+    alert('Please upload a Sales Report or enter inventory data first.');
+    return;
+  }
+
+  const { results, regions, c } = computeRecommendations();
+  const valAnalysis = analyzeValuation();
+  const content = document.getElementById('mainContent');
+
+  // Count transfers
+  const totalShipments = results.reduce((s, r) =>
+    s + Object.values(r.transfers).filter(v => v > 0).length, 0);
+  const totalCost = totalShipments * c.transport;
+  const totalUnits = results.reduce((s, r) => s + r.totalOutbound, 0);
+
+  let html = '';
+
+  /* ── Status bar ── */
+  html += `<div class="status-bar animate">`;
+  html += `<div class="stat-pill blue"><span class="label">MODE</span><span class="val">${mode.toUpperCase()}</span></div>`;
+  html += `<div class="stat-pill"><span class="label">PRODUCTS</span><span class="val">${results.length}</span></div>`;
+  html += `<div class="stat-pill"><span class="label">REGIONS</span><span class="val">${regions.length}</span></div>`;
+  html += `<div class="stat-pill ${totalShipments > 0 ? 'blue' : ''}"><span class="label">SHIPMENTS</span><span class="val">${totalShipments}</span></div>`;
+  html += `<div class="stat-pill ${totalCost > 0 ? 'yellow' : ''}"><span class="label">EST. COST</span><span class="val">$${totalCost.toLocaleString()}</span></div>`;
+  html += `</div>`;
+
+  /* ── Valuation card ── */
+  if (valAnalysis) {
+    const { latest, change } = valAnalysis;
+    const trendClass = change > 0 ? 'trend-up' : change < 0 ? 'trend-down' : 'trend-flat';
+    const trendLabel = change > 0 ? '▲ IMPROVING' : change < 0 ? '▼ DECLINING' : '— STABLE';
+    const warn = change < 0 && totalShipments > 2;
+
+    html += `<div class="val-card animate" style="animation-delay:.05s">`;
+    html += `<div class="val-item"><div class="val-label">Latest Valuation</div><div class="val-num" style="color:var(--text)">$${latest.valuation.toLocaleString()}</div></div>`;
+    html += `<div class="val-item"><div class="val-label">Previous</div><div class="val-num" style="color:var(--text2);font-size:14px">$${valAnalysis.previous.valuation.toLocaleString()}</div></div>`;
+    html += `<div class="val-item"><div class="val-label">Change</div><div class="val-num" style="color:${change >= 0 ? 'var(--green2)' : 'var(--red)'};font-size:14px">${change >= 0 ? '+' : ''}$${change.toLocaleString()}</div></div>`;
+    html += `<div class="${trendClass} val-trend">${trendLabel}</div>`;
+    if (warn) html += `<div class="val-warn">⚠ High logistics activity with declining valuation</div>`;
+    html += `</div>`;
+  }
+
+  /* ── Recommendation table ── */
+  html += `<div class="card animate" style="animation-delay:.1s">`;
+  html += `<div class="card-head"><div class="dot"></div>TRANSFER RECOMMENDATIONS</div>`;
+  html += `<div class="card-body">`;
+  html += `<table>`;
+
+  // Header
+  html += `<thead><tr>
+    <th></th>
     <th>Product</th>
-    <th class="num">Hub Est.</th>
-    <th class="num">Pipeline Out</th>
-    <th class="num">Buffer</th>
-    <th class="num">Available</th>
-    ${regions.map(r => `<th class="num">→ ${r}</th>`).join('')}
-    <th class="num">Total Out</th>
-    <th class="num">Buf. Remaining</th>
+    <th class="num">Hub Stock</th>`;
+  regions.forEach(r => html += `<th class="num">${r} Sold</th>`);
+  regions.forEach(r => html += `<th class="num">→ ${r}</th>`);
+  html += `<th class="num">Hub Remaining</th>
     <th>Status</th>
-  </tr>`;
+  </tr></thead>`;
 
-  if (!state.pendingRecs.length) {
-    tbody.innerHTML = `<tr><td colspan="${9 + regions.length}" style="color:var(--text3);text-align:center">No recommendations</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = state.pendingRecs.map(rec => {
+  // Rows
+  html += `<tbody>`;
+  results.forEach(r => {
+    const rowClass = { low:'row-low', partial:'row-warn', transfer:'row-ok', sufficient:'' }[r.status] || '';
     const statusBadge = {
-      'OK':         '<span class="badge badge-green">OK</span>',
-      'TRANSFER':   '<span class="badge badge-blue">TRANSFER</span>',
-      'PARTIAL':    '<span class="badge badge-yellow">PARTIAL</span>',
-      'LOW_STOCK':  '<span class="badge badge-red">LOW STOCK</span>',
-      'SUFFICIENT': '<span class="badge badge-grey">SUFFICIENT</span>',
-    }[rec.status] || rec.status;
+      low:       '<span class="badge b-low">HUB LOW</span>',
+      partial:   '<span class="badge b-partial">PARTIAL</span>',
+      transfer:  '<span class="badge b-transfer">TRANSFER</span>',
+      sufficient:'<span class="badge b-sufficient">SUFFICIENT</span>'
+    }[r.status];
 
-    const rowClass = {
-      'LOW_STOCK': 'row-crit',
-      'PARTIAL': 'row-warn',
-      'TRANSFER': 'row-ok',
-    }[rec.status] || '';
+    // Health indicator
+    const healthPct = r.hubStock > 0 ? r.hubRemaining / r.hubStock : 0;
+    const hClass = healthPct > 0.4 ? 'h-green' : healthPct > 0.15 ? 'h-yellow' : 'h-red';
 
-    return `<tr class="${rowClass}">
-      <td class="center"><input type="checkbox" ${rec.selected ? 'checked' : ''} onchange="toggleRec(${rec.id}, this.checked)"></td>
-      <td class="text-accent bold">${rec.product}</td>
-      <td class="num">${rec.hubEst}</td>
-      <td class="num" style="color:var(--yellow)">${rec.hubPipelineOut > 0 ? rec.hubPipelineOut : '—'}</td>
-      <td class="num" style="color:var(--text3)">${state.hubBuffer}</td>
-      <td class="num bold">${Math.max(0, rec.hubAvailable - rec.hubPipelineOut)}</td>
-      ${regions.map(r => {
-        const v = rec.transfers[r] || 0;
-        return `<td class="num">${v > 0 ? `<span style="color:var(--green)">${v}</span>` : '<span style="color:var(--text3)">—</span>'}</td>`;
-      }).join('')}
-      <td class="num bold" style="color:var(--accent)">${rec.totalOutbound}</td>
-      <td class="num ${rec.bufferRemaining < state.hubBuffer ? 'text-red' : ''}">${rec.bufferRemaining}</td>
-      <td>${statusBadge}</td>
-    </tr>`;
-  }).join('');
-}
+    html += `<tr class="${rowClass}">`;
+    html += `<td><div class="health ${hClass}"></div></td>`;
+    html += `<td style="font-weight:700;color:var(--hi2)">${r.product}</td>`;
+    html += `<td class="num">${r.hubStock}</td>`;
+    regions.forEach(reg => {
+      const sold = r.regionData.find(rd => rd.region === reg)?.soldQty || 0;
+      html += `<td class="num" style="color:var(--text2)">${sold || '—'}</td>`;
+    });
+    regions.forEach(reg => {
+      const xfer = r.transfers[reg] || 0;
+      html += `<td class="num ${xfer > 0 ? 'xfer-val' : 'xfer-zero'}">${xfer > 0 ? xfer : '—'}</td>`;
+    });
+    html += `<td class="num ${r.hubRemaining < c.buffer ? 'xfer-zero' : ''}" style="${r.hubRemaining < 0 ? 'color:var(--red)' : ''}">${r.hubRemaining}</td>`;
+    html += `<td>${statusBadge}</td>`;
+    html += `</tr>`;
+  });
+  html += `</tbody></table>`;
 
-function renderForecastTable(rows) {
-  const tbody = document.getElementById('forecastBody');
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="color:var(--text3);text-align:center">No forecast data</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => {
-    const netColor = r.netNeed > 0 ? 'color:var(--yellow)' : 'color:var(--text3)';
-    return `<tr>
-      <td class="text-accent">${r.product}</td>
-      <td>${r.region}</td>
-      <td class="num">${r.lastDemand}</td>
-      <td class="num">${r.maForecast.toFixed(1)}</td>
-      <td class="num" style="color:var(--text3)">${r.safetyStock}</td>
-      <td class="num">${r.regEst}</td>
-      <td class="num" style="color:var(--yellow)">${r.regPipeIn > 0 ? r.regPipeIn : '—'}</td>
-      <td class="num bold" style="${netColor}">${r.netNeed}</td>
-      <td><span class="badge ${r.modeUsed === 'pull' ? 'badge-blue' : 'badge-orange'}">${r.modeUsed.toUpperCase()}</span></td>
-    </tr>`;
-  }).join('');
-}
+  // Cost footer
+  html += `<div class="cost-bar">`;
+  html += `<span>TOTAL OUTBOUND: <span style="color:var(--text)">${totalUnits} units</span></span>`;
+  html += `<span class="sep">|</span>`;
+  html += `<span>SHIPMENTS: <span style="color:var(--text)">${totalShipments}</span></span>`;
+  html += `<span class="sep">|</span>`;
+  html += `<span>TRANSPORT COST: <span class="cost-val">$${totalCost.toLocaleString()}</span> @ $${c.transport}/shipment</span>`;
+  html += `<span class="sep">|</span>`;
+  html += `<span>HUB BUFFER: <span style="color:var(--text)">${c.buffer}</span></span>`;
+  html += `<span class="sep">|</span>`;
+  html += `<span>SAFETY STOCK: <span style="color:var(--text)">${c.safety}</span></span>`;
+  html += `</div>`;
+  html += `</div></div>`;
 
-function toggleRec(id, checked) {
-  const rec = state.pendingRecs.find(r => r.id === id);
-  if (rec) rec.selected = checked;
-}
+  /* ── Demand + Inventory Detail ── */
+  html += `<div class="two-col">`;
 
-// ═══════════════════════════════════════════════════════════════════
-// CONFIRM TRANSFERS
-// ═══════════════════════════════════════════════════════════════════
-
-function confirmTransfers(selectedOnly = false) {
-  const toConfirm = selectedOnly
-    ? state.pendingRecs.filter(r => r.selected && r.totalOutbound > 0)
-    : state.pendingRecs.filter(r => r.totalOutbound > 0);
-
-  if (!toConfirm.length) {
-    log('No transfers to confirm.', 'warn');
-    return;
-  }
-
-  let shipments = 0;
-  let cost = 0;
-
-  toConfirm.forEach(rec => {
-    Object.entries(rec.transfers).forEach(([region, qty]) => {
-      if (qty <= 0) return;
-
-      // Add to pipeline
-      state.pipeline.push({
-        id: `P${Date.now()}-${region}`,
-        product: rec.product,
-        region,
-        qty,
-        sentRound: state.currentRound,
-        arrivesRound: state.currentRound + state.shippingDelay,
-        status: 'transit'
-      });
-
-      // Deduct from hub shadow
-      setShadow(rec.product, 'HUB', getShadow(rec.product, 'HUB') - qty);
-
-      // Record in transfer history
-      state.transferHistory.push({
-        round: state.currentRound,
-        product: rec.product,
-        region, qty,
-        cost: state.transportCost,
-        arrivesRound: state.currentRound + state.shippingDelay,
-        status: 'transit'
-      });
-
-      shipments++;
-      cost += state.transportCost;
-      log(`Transfer confirmed: ${qty}x ${rec.product} → ${region} (arrives R${state.currentRound + state.shippingDelay}) | Cost: $${state.transportCost}`, 'ok');
+  // Demand forecast table
+  html += `<div class="card animate" style="animation-delay:.15s">`;
+  html += `<div class="card-head"><div class="dot" style="background:var(--yellow)"></div>DEMAND FORECAST DETAIL</div>`;
+  html += `<div class="card-body"><table>`;
+  html += `<thead><tr><th>Product</th><th>Region</th><th class="num">Sold</th><th class="num">Forecast</th><th class="num">Target</th><th class="num">Reg. Inv</th><th class="num">Net Need</th></tr></thead>`;
+  html += `<tbody>`;
+  results.forEach(r => {
+    r.regionData.forEach(rd => {
+      const needColor = rd.netReq > 0 ? 'color:var(--yellow)' : 'color:var(--text3)';
+      html += `<tr>
+        <td style="color:var(--hi2)">${r.product}</td>
+        <td>${rd.region}</td>
+        <td class="num">${rd.soldQty}</td>
+        <td class="num">${rd.forecast.toFixed(1)}</td>
+        <td class="num">${rd.targetStock.toFixed(0)}</td>
+        <td class="num">${rd.regionInv}</td>
+        <td class="num" style="${needColor}">${rd.netReq > 0 ? rd.netReq.toFixed(0) : '—'}</td>
+      </tr>`;
     });
   });
+  html += `</tbody></table></div></div>`;
 
-  state.totalShipments += shipments;
-  state.totalTransportCost += cost;
-  state.roundsSimulated = Math.max(state.roundsSimulated, state.currentRound);
-
-  // Clear pending
-  state.pendingRecs = [];
-  renderRecommendationTable();
-  renderForecastTable([]);
-  renderPipelineTable();
-  renderHistoryTable();
-  renderShadowTable();
-  updateMetrics();
-
-  log(`✓ Confirmed ${shipments} shipments. Total transport cost this batch: $${cost}`, 'ok');
-}
-
-function clearRecommendations() {
-  state.pendingRecs = [];
-  renderRecommendationTable();
-  renderForecastTable([]);
-  document.getElementById('recTransfers').textContent = '0';
-  document.getElementById('recCost').textContent = '$0';
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// HISTORY & RECONCILIATION
-// ═══════════════════════════════════════════════════════════════════
-
-function renderHistoryTable() {
-  const tbody = document.getElementById('historyBody');
-  if (!state.transferHistory.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text3);text-align:center">No transfers recorded</td></tr>';
-    return;
-  }
-  tbody.innerHTML = state.transferHistory.map((t, i) => {
-    const statusBadge = t.status === 'transit'
-      ? '<span class="badge badge-yellow">TRANSIT</span>'
-      : '<span class="badge badge-green">DELIVERED</span>';
-    return `<tr>
-      <td style="color:var(--text3)">${i + 1}</td>
-      <td>${t.round}</td>
-      <td class="text-accent">${t.product}</td>
-      <td>${t.region}</td>
-      <td class="num">${t.qty}</td>
-      <td class="num" style="color:var(--yellow)">$${t.cost}</td>
-      <td class="num">${t.arrivesRound}</td>
-      <td>${statusBadge}</td>
+  // Hub inventory summary
+  html += `<div class="card animate" style="animation-delay:.2s">`;
+  html += `<div class="card-head"><div class="dot" style="background:var(--green)"></div>HUB INVENTORY SUMMARY</div>`;
+  html += `<div class="card-body"><table>`;
+  html += `<thead><tr><th>Product</th><th class="num">Hub Stock</th><th class="num">Buffer</th><th class="num">Available</th><th class="num">After Transfers</th><th>Health</th></tr></thead>`;
+  html += `<tbody>`;
+  results.forEach(r => {
+    const healthPct = r.hubStock > 0 ? r.hubRemaining / r.hubStock : 0;
+    const hClass = healthPct > 0.4 ? 'h-green' : healthPct > 0.15 ? 'h-yellow' : 'h-red';
+    const healthLabel = healthPct > 0.4
+      ? '<span style="color:var(--green2)">SUFFICIENT</span>'
+      : healthPct > 0.15
+        ? '<span style="color:var(--yellow)">MODERATE</span>'
+        : '<span style="color:var(--red)">STOCKOUT RISK</span>';
+    html += `<tr>
+      <td style="color:var(--hi2)">${r.product}</td>
+      <td class="num">${r.hubStock}</td>
+      <td class="num" style="color:var(--text3)">${c.buffer}</td>
+      <td class="num">${r.hubAvailable}</td>
+      <td class="num ${r.hubRemaining < c.buffer ? 'xfer-zero' : ''}">${r.hubRemaining}</td>
+      <td><span class="health ${hClass}" style="display:inline-block;vertical-align:middle;margin-right:6px"></span>${healthLabel}</td>
     </tr>`;
-  }).join('');
+  });
+  html += `</tbody></table></div></div>`;
+
+  html += `</div>`; // end two-col
+
+  document.getElementById('emptyState').style.display = 'none';
+  content.innerHTML = html;
+  updateValDisplay();
 }
 
-function renderSalesHistory() {
-  const tbody = document.getElementById('salesHistBody');
-  const rows = [];
-  Object.entries(state.salesHistory).forEach(([round, products]) => {
-    Object.entries(products).forEach(([mat, regions]) => {
-      Object.entries(regions).forEach(([region, qty]) => {
-        rows.push({ round: parseInt(round), mat, region, qty });
-      });
-    });
-  });
-  rows.sort((a, b) => b.round - a.round || a.mat.localeCompare(b.mat));
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text3);text-align:center">No sales history</td></tr>';
-    return;
-  }
-  tbody.innerHTML = rows.map(r => `<tr>
-    <td>${r.round}</td>
-    <td class="text-accent">${r.mat}</td>
-    <td>${r.region}</td>
-    <td class="num">${r.qty}</td>
-  </tr>`).join('');
+// ═══════════════════════════════════════════════════════════
+// ADVANCED SETTINGS TOGGLE
+// ═══════════════════════════════════════════════════════════
+
+function toggleAdv() {
+  const p = document.getElementById('advPanel');
+  p.classList.toggle('open');
 }
 
-function runReconciliation() {
-  const tbody = document.getElementById('reconcileBody');
-  const entries = [];
-
-  Object.entries(state.shadowInventory).forEach(k => {
-    // k is actually key
-  });
-
-  const rows = [];
-  const allKeys = new Set([
-    ...Object.keys(state.shadowInventory),
-    ...Object.keys(state.actualInventory)
-  ]);
-
-  allKeys.forEach(k => {
-    const [product, location] = k.split(':');
-    const shadow = state.shadowInventory[k] || 0;
-    const actEntry = state.actualInventory[k];
-    const actual = actEntry ? actEntry.qty : null;
-    const diff = actual !== null ? actual - shadow : null;
-    const pct = (shadow > 0 && diff !== null) ? ((diff / shadow) * 100).toFixed(1) : '—';
-
-    let assessment = '—';
-    if (diff !== null) {
-      if (Math.abs(diff) < 5) assessment = '<span class="badge badge-green">MATCH</span>';
-      else if (Math.abs(diff) < 20) assessment = '<span class="badge badge-yellow">MINOR GAP</span>';
-      else assessment = '<span class="badge badge-red">DISCREPANCY</span>';
-    }
-
-    rows.push({ product, location, shadow, actual, diff, pct, assessment });
-  });
-
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--text3);text-align:center">No data</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = rows.map(r => `<tr>
-    <td class="text-accent">${r.product}</td>
-    <td>${r.location}</td>
-    <td class="num">${r.shadow}</td>
-    <td class="num">${r.actual !== null ? r.actual : '<span style="color:var(--text3)">—</span>'}</td>
-    <td class="num ${r.diff !== null && r.diff < 0 ? 'text-red' : r.diff > 0 ? 'text-green' : ''}">${r.diff !== null ? (r.diff > 0 ? '+' : '') + r.diff : '—'}</td>
-    <td class="num">${r.pct}${r.pct !== '—' ? '%' : ''}</td>
-    <td>${r.assessment}</td>
-  </tr>`).join('');
-}
-
-function renderReconciliation() { runReconciliation(); }
-
-// ═══════════════════════════════════════════════════════════════════
-// TAB SWITCHING
-// ═══════════════════════════════════════════════════════════════════
-
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    const tabs = ['setup', 'import', 'inventory', 'recommend', 'history'];
-    t.classList.toggle('active', tabs[i] === name);
-  });
-  document.querySelectorAll('.tab-content').forEach(c => {
-    c.classList.toggle('active', c.id === 'tab-' + name);
-  });
-
-  if (name === 'history') {
-    renderHistoryTable();
-    renderSalesHistory();
-    runReconciliation();
-    renderPipelineTable();
-  }
-  if (name === 'inventory') {
-    renderShadowTable();
-    renderPipelineTable();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 // INIT
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
 
-applySetup();
-updateMetrics();
-log('ERP Tool 1 — Transfer Recommender initialized.', 'info');
-log('Start: Setup → Import Sales → Set Inventory → Run Recommendations', 'info');
+// Allow main content to hold the empty state initially
+document.getElementById('mainContent').innerHTML += '';
 </script>
 </body>
 </html>
