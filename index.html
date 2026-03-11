@@ -275,6 +275,24 @@ tr.row-ok   td { background: #061a1033 !important; }
 .hy { background: var(--yellow); box-shadow: 0 0 5px var(--yellow); }
 .hr { background: var(--red); box-shadow: 0 0 5px var(--red); }
 
+/* ── PRODUCT COLOR CHIP ──
+   Used in every Product column across all tables.
+   Structure: <span class="prod-chip">
+                <span class="pdot"></span>
+                <span class="pcode">T01</span>
+              </span>
+   Color is set via inline style on the chip itself.           */
+.prod-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-weight: 700; font-size: 11px;
+}
+.pdot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 2px; flex-shrink: 0;
+  /* color injected via inline style: background */
+}
+/* pcode inherits color from parent prod-chip */
+
 .xv { color: var(--grn2); font-weight: 700; }   /* transfer value — green */
 .xz { color: var(--text3); }                     /* zero / dash */
 
@@ -302,9 +320,23 @@ tr.row-ok   td { background: #061a1033 !important; }
 .dbg-bd.open { display: block; }
 .dbg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; }
 .dbg-item { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 9px 11px; }
-.dbg-prod { color: var(--hi2); font-family: var(--mono); font-size: 10px; font-weight: 700; margin-bottom: 5px; }
+.dbg-prod { font-family: var(--mono); font-size: 10px; font-weight: 700; margin-bottom: 5px; }
 .dbg-row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--text2); line-height: 2; }
 .dbg-row .dk { color: var(--text3); }
+
+/* Product color legend bar */
+.prod-legend {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  padding: 8px 16px; background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+}
+.legend-item {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 10px;
+}
+.legend-swatch {
+  width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+}
 
 /* Empty state */
 .empty { text-align: center; padding: 50px 20px; color: var(--text3); font-family: var(--mono); }
@@ -453,6 +485,61 @@ tr.row-ok   td { background: #061a1033 !important; }
 // ══════════════════════════════════════════════════════════════════════
 const REGIONS  = ['North', 'South', 'West'];       // regional warehouses
 const ALL_LOCS = ['HUB', 'North', 'South', 'West']; // all canonical locations
+
+// ══════════════════════════════════════════════════════════════════════
+// PRODUCT COLOR MAP
+// Fixed colors per product code. Used consistently across ALL tables.
+// If a product is not in this map, getProductColor() returns the
+// default accent color (--hi2) so new products still render cleanly.
+// ══════════════════════════════════════════════════════════════════════
+const PRODUCT_COLORS = {
+  T01: '#3b82f6',  // blue
+  T02: '#10b981',  // emerald
+  T03: '#f59e0b',  // amber
+  T04: '#f97316',  // orange
+  T05: '#8b5cf6',  // violet
+  T06: '#ef4444',  // red
+};
+
+/**
+ * Returns the fixed hex color for a product code.
+ * Falls back to the default accent if not in the map.
+ * @param {string} product  e.g. "T01"
+ * @returns {string}        hex color e.g. "#3b82f6"
+ */
+function getProductColor(product) {
+  return PRODUCT_COLORS[product] || '#60a5fa'; // fallback = --hi2
+}
+
+/**
+ * Renders a product cell: colored square dot + product code in matching color.
+ * Use this in every Product <td> across all tables.
+ * @param {string} product  e.g. "T01"
+ * @returns {string}        HTML string for the cell content
+ */
+function productChip(product) {
+  const color = getProductColor(product);
+  return `<span class="prod-chip" style="color:${color}">` +
+    `<span class="pdot" style="background:${color};opacity:0.85"></span>` +
+    `<span class="pcode">${product}</span>` +
+    `</span>`;
+}
+
+/**
+ * Renders a compact product legend showing all known products with their colors.
+ * Shown above tables that contain product data.
+ * @param {string[]} products  list of product codes present in results
+ * @returns {string}           HTML string for the legend bar
+ */
+function productLegend(products) {
+  if (!products.length) return '';
+  const items = products.map(p => {
+    const c = getProductColor(p);
+    return `<span class="legend-item" style="color:${c}">` +
+      `<span class="legend-swatch" style="background:${c}"></span>${p}</span>`;
+  }).join('');
+  return `<div class="prod-legend">${items}</div>`;
+}
 
 // ══════════════════════════════════════════════════════════════════════
 // LOCATION NORMALIZATION
@@ -945,8 +1032,10 @@ function generate() {
   //                → North | → South | → West | Hub Remaining | Status
   // NEVER shows 03/03N/03S/03W columns.
   // ══════════════════════════════════════════════════════════════════
+  const productList = results.map(r => r.product);
   html += `<div class="card anim" style="animation-delay:.12s">
     <div class="card-hd"><div class="dot"></div>TRANSFER RECOMMENDATIONS</div>
+    ${productLegend(productList)}
     <div class="card-bd"><table>
     <thead><tr>
       <th></th>
@@ -974,7 +1063,7 @@ function generate() {
 
     html += `<tr class="${rc}">
       <td><span class="hdot ${hdc}"></span></td>
-      <td style="font-weight:700;color:var(--hi2)">${r.product}</td>
+      <td>${productChip(r.product)}</td>
       <td class="r">${r.hubStock}</td>
       ${REGIONS.map(reg => {
         const sold = r.regionData.find(d => d.region === reg)?.sold || 0;
@@ -1010,6 +1099,7 @@ function generate() {
   // Region column: North, South, West ONLY. Never 03/03N/03S/03W.
   html += `<div class="card anim" style="animation-delay:.15s">
     <div class="card-hd"><div class="dot" style="background:var(--yellow)"></div>DEMAND FORECAST DETAIL</div>
+    ${productLegend(productList)}
     <div class="card-bd"><table>
     <thead><tr>
       <th>Product</th><th>Region</th>
@@ -1025,7 +1115,7 @@ function generate() {
     r.regionData.forEach(rd => {
       const nc = rd.netReq > 0 ? 'color:var(--yellow)' : 'color:var(--text3)';
       html += `<tr>
-        <td style="color:var(--hi2)">${r.product}</td>
+        <td>${productChip(r.product)}</td>
         <td>${rd.region}</td>
         <td class="r">${rd.sold > 0 ? rd.sold : '—'}</td>
         <td class="r">${rd.forecast.toFixed(1)}</td>
@@ -1040,6 +1130,7 @@ function generate() {
   // ── Hub Inventory Summary
   html += `<div class="card anim" style="animation-delay:.18s">
     <div class="card-hd"><div class="dot" style="background:var(--green)"></div>HUB INVENTORY SUMMARY</div>
+    ${productLegend(productList)}
     <div class="card-bd"><table>
     <thead><tr>
       <th>Product</th>
@@ -1060,7 +1151,7 @@ function generate() {
         : `<span style="color:var(--red)">STOCKOUT RISK</span>`;
     const rmc = r.hubAfter < 0 ? 'color:var(--red)' : r.hubAfter < c.buffer ? 'color:var(--yellow)' : '';
     html += `<tr>
-      <td style="color:var(--hi2)">${r.product}</td>
+      <td>${productChip(r.product)}</td>
       <td class="r">${r.hubStock}</td>
       <td class="r" style="color:var(--text3)">${c.buffer}</td>
       <td class="r">${r.hubAvail}</td>
@@ -1092,8 +1183,9 @@ function generate() {
       <div class="dbg-grid">`;
 
   results.forEach(r => {
-    html += `<div class="dbg-item">
-      <div class="dbg-prod">${r.product}</div>
+    const color = getProductColor(r.product);
+    html += `<div class="dbg-item" style="border-color:${color}22">
+      <div class="dbg-prod">${productChip(r.product)}</div>
       ${ALL_LOCS.map(loc => `
         <div class="dbg-row">
           <span class="dk">${loc}</span>
